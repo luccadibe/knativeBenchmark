@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: workload-generator
+spec:
+  template:
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+            - matchExpressions:
+              - key: role
+                operator: In
+                values:
+                - workload-generator
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: serving.knative.dev/service
+                operator: Exists
+            topologyKey: "kubernetes.io/hostname"
+      tolerations:
+      - key: "workload-generator"
+        operator: "Equal"
+        value: "true"
+        effect: "NoSchedule" 

@@ -1,0 +1,16 @@
+baseUrl: "http://localhost:8080"
+
+targets:
+  - url: "empty-go.functions.example.com"
+    weight: 1
+    headers:
+      Content-Type: "application/json"
+    hostHeader: "empty-go.functions.example.com"
+  - url: "empty-py-http.functions.example.com"
+    weight: 2
+    hostHeader: "empty-py-http.functions.example.com"
+
+rate:
+  requestsPerSecond: 100
+  duration: 5m
+  rampup: 30s 

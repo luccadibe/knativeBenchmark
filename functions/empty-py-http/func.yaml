@@ -1,0 +1,12 @@
+specVersion: 0.36.0
+name: empty-py-http
+runtime: python
+registry: luccadibenedetto
+image: docker.io/luccadibenedetto/empty-py-http:latest
+namespace: functions
+created: 2024-12-10T11:13:53.693111529+01:00
+build:
+  builder: pack
+deploy:
+  namespace: functions
+  image: docker.io/luccadibenedetto/empty-py-http@sha256:4b755263ded1b18452730da547a519bd5e3be6fdae079c4a0b75c492a971abfc
