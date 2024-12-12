@@ -115,3 +115,6 @@ Flags:
       --registry-insecure      Skip TLS certificate verification when communicating in HTTPS with the registry
                                ($FUNC_REGISTRY_INSECURE)
   -v, --verbose                Print verbose logs ($FUNC_VERBOSE)
+
+
+  https://knative.dev/docs/serving/revisions/revision-admin-config-options/

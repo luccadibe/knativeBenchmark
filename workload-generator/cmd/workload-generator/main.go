@@ -2,52 +2,59 @@ package main
 
 import (
 	"flag"
-	"log"
+	"log/slog"
 	"os"
-	"os/signal"
-	"syscall"
 
 	"workload-generator/internal/config"
+	"workload-generator/internal/connection"
 	"workload-generator/internal/generator"
+	"workload-generator/internal/store"
 )
 
 func main() {
-	log.SetFlags(log.LstdFlags | log.Lmicroseconds)
+
 	configPath := flag.String("config", "config.yaml", "path to config file")
+	pingEndpoints := flag.Bool("ping", false, "ping endpoints")
 	devMode := flag.Bool("dev", false, "development mode - use localhost:8080")
 	flag.Parse()
 
-	log.Printf("Loading configuration from: %s", *configPath)
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	logger.Info("Loading configuration", "configPath", *configPath, "devMode", *devMode)
 	cfg, err := config.Load(*configPath, *devMode)
 	if err != nil {
-		log.Fatalf("Failed to load config: %v", err)
+		logger.Error("Failed to load config", "error", err)
 	}
-	log.Printf("Configuration loaded: baseURL=%s, targets=%d", cfg.BaseURL, len(cfg.Targets))
+	logger.Info("Configuration loaded", "baseURL", cfg.BaseURL, "targets", len(cfg.Targets))
 
-	gen := generator.New(cfg)
-	log.Println("Generator initialized")
+	logFile := store.GetLogFileWriter(cfg.Store.LogDirPath)
+	defer logFile.Close()
 
-	// Setup graceful shutdown
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+	logger = slog.New(slog.NewTextHandler(logFile, nil))
+	logger.Info("Loaded configuration", "config", cfg)
+	pool := connection.NewPool(cfg.BaseURL, cfg.Rate.MaxIdleConns, cfg.Rate.MaxIdleConnsPerHost, cfg.Rate.IdleConnTimeout, cfg.Rate.Timeout)
 
-	// Start the generator
-	errChan := make(chan error, 1)
-	go func() {
-		log.Println("Starting generator...")
-		errChan <- gen.Start()
-	}()
+	if *pingEndpoints {
+		ping(cfg, logger, pool)
+	}
 
-	// Wait for shutdown signal or error
-	select {
-	case err := <-errChan:
+	gen := generator.New(cfg, logger, pool)
+	logger.Info("Generator initialized")
+
+	err = gen.Start()
+	if err != nil {
+		logger.Error("Generator failed", "error", err)
+	}
+
+}
+
+func ping(cfg *config.Config, logger *slog.Logger, pool connection.Pool) {
+	for _, target := range cfg.Targets {
+		resp, err := pool.Get(target)
 		if err != nil {
-			log.Fatalf("Generator failed: %v", err)
-		} else {
-			log.Println("Generator stopped")
+			logger.Error("Failed to ping endpoint", "target", target.URL, "error", err)
+			panic(err)
 		}
-	case sig := <-sigChan:
-		log.Printf("Received signal: %v", sig)
-		gen.Stop()
+		defer resp.Body.Close()
+		logger.Info("Pinged endpoint", "target", target.URL, "status", resp.StatusCode)
 	}
 }

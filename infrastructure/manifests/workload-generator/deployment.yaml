@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: workload-generator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: workload-generator
+  template:
+    metadata:
+      labels:
+        app: workload-generator
+    spec:
+      nodeSelector:
+          workload-generator: "true"
+      containers:
+      - name: workload-generator
+        image: "luccadibenedetto/workload-generator:latest"
+        ports:
+        - containerPort: 8080
+        stdin: true
+        tty: true
+        securityContext:
+          allowPrivilegeEscalation: true
+          privileged: true
+        volumeMounts:
+        - name: workload-generator-logs
+          mountPath: /logs
+      volumes:
+      - name: workload-generator-logs
+        hostPath:
+          path: /var/log/workload-generator
+          type: DirectoryOrCreate
+      
+      tolerations:
+        - key: "dedicated"
+          operator: "Equal"
+          value: "workload-generator"
+          effect: "NoSchedule" 
+      

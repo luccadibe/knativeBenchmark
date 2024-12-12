@@ -1,0 +1,90 @@
+apiVersion: serving.knative.dev/v1
+kind: Revision
+metadata:
+  annotations:
+    dapr.io/app-id: empty-go
+    dapr.io/app-port: "8080"
+    dapr.io/enable-api-logging: "true"
+    dapr.io/enabled: "true"
+    dapr.io/metrics-port: "9092"
+    serving.knative.dev/creator: kubecfg-
+    serving.knative.dev/routes: empty-go
+    serving.knative.dev/routingStateModified: "2024-12-12T12:34:51Z"
+  creationTimestamp: "2024-12-12T12:34:51Z"
+  generation: 1
+  labels:
+    boson.dev/function: "true"
+    boson.dev/runtime: go
+    function.knative.dev: "true"
+    function.knative.dev/name: empty-go
+    function.knative.dev/runtime: go
+    serving.knative.dev/configuration: empty-go
+    serving.knative.dev/configurationGeneration: "1"
+    serving.knative.dev/configurationUID: 03f3e074-0d3a-421e-b347-54d7c8885268
+    serving.knative.dev/routingState: active
+    serving.knative.dev/service: empty-go
+    serving.knative.dev/serviceUID: c2fbf8f5-32f3-4acd-b3c7-f03f323e3b4b
+  name: empty-go-00001
+  namespace: functions
+  ownerReferences:
+  - apiVersion: serving.knative.dev/v1
+    blockOwnerDeletion: true
+    controller: true
+    kind: Configuration
+    name: empty-go
+    uid: 03f3e074-0d3a-421e-b347-54d7c8885268
+  resourceVersion: "4805"
+  uid: 27772395-9742-496f-99fc-17cb0b880ed8
+spec:
+  containerConcurrency: 0
+  containers:
+  - env:
+    - name: BUILT
+      value: 20241212T133451
+    - name: ADDRESS
+      value: 0.0.0.0
+    image: docker.io/luccadibenedetto/empty-go:latest
+    livenessProbe:
+      httpGet:
+        path: /health/liveness
+        port: 0
+    name: user-container
+    readinessProbe:
+      httpGet:
+        path: /health/readiness
+        port: 0
+      successThreshold: 1
+    resources: {}
+    securityContext:
+      allowPrivilegeEscalation: false
+      capabilities:
+        drop:
+        - ALL
+      runAsNonRoot: true
+      seccompProfile:
+        type: RuntimeDefault
+  enableServiceLinks: false
+  timeoutSeconds: 300
+status:
+  actualReplicas: 0
+  conditions:
+  - lastTransitionTime: "2024-12-12T12:36:01Z"
+    message: The target is not receiving traffic.
+    reason: NoTraffic
+    severity: Info
+    status: "False"
+    type: Active
+  - lastTransitionTime: "2024-12-12T12:35:01Z"
+    status: "True"
+    type: ContainerHealthy
+  - lastTransitionTime: "2024-12-12T12:35:01Z"
+    status: "True"
+    type: Ready
+  - lastTransitionTime: "2024-12-12T12:34:53Z"
+    status: "True"
+    type: ResourcesAvailable
+  containerStatuses:
+  - imageDigest: index.docker.io/luccadibenedetto/empty-go@sha256:c48beaa386789fe8bed443a82f7998433b294f80ca466bb0586cfb4d3379ba8c
+    name: user-container
+  desiredReplicas: 0
+  observedGeneration: 1

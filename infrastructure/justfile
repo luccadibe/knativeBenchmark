@@ -2,7 +2,7 @@
 export TF_VAR_project_id := "csb-benchmark"       # Your GCP project ID
 export CLUSTER_NAME := "csb.lucca.org"            # Your cluster name
 export TF_VAR_zone := "europe-west1-b"             # GCP zone for the cluster
-export NODE_COUNT := "1"              # Number of worker nodes
+export NODE_COUNT := "2"              # Number of worker nodes
 export CONTROL_PLANE_SIZE := "e2-standard-2"      # Machine type for control plane
 export NODE_SIZE := "e2-standard-2"               # Machine type for worker nodes
 export TF_VAR_bucket_name := "csb-benchmark-state"      # Must be globally unique
@@ -86,6 +86,20 @@ up spot="": _check-env
     
     echo "Waiting for cluster to be ready..."
     kops validate cluster --wait 10m
+    
+    kubectl create namespace functions
+    # Setup node labels - get second node (first is control plane)
+    NODE_NAME=$(kubectl get nodes --no-headers -o custom-columns=":metadata.name" | tail -1)
+    kubectl label node ${NODE_NAME} workload-generator=true
+    # Taint the node so only workload generator pods can run there
+    kubectl taint node ${NODE_NAME} dedicated=workload-generator:NoSchedule
+
+    # Create the persistent volume
+    kubectl apply -f manifests/pv.yaml
+    # Create the persistent volume claim
+    kubectl apply -f manifests/workload-generator/pvc.yaml
+    # Create the deployment
+    kubectl apply -f manifests/workload-generator/deployment.yaml
 
 install-knative: _check-env
     kubectl apply -f https://github.com/knative/serving/releases/download/knative-v1.16.0/serving-crds.yaml

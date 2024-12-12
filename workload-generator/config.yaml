@@ -13,4 +13,13 @@ targets:
 rate:
   requestsPerSecond: 100
   duration: 5m
-  rampup: 30s 
+  
+  # HTTP client settings
+  maxIdleConns: 100
+  maxIdleConnsPerHost: 100
+  idleConnTimeout: 90s
+  timeout: 30s
+
+store:
+  logDirPath: "/logs"
+

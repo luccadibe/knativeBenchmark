@@ -9,4 +9,4 @@ build:
   builder: pack
 deploy:
   namespace: functions
-  image: docker.io/luccadibenedetto/empty-go@sha256:c48beaa386789fe8bed443a82f7998433b294f80ca466bb0586cfb4d3379ba8c
+  image: docker.io/luccadibenedetto/empty-go:latest

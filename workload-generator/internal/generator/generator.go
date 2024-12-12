@@ -2,7 +2,7 @@ package generator
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"sync"
 	"time"
 
@@ -14,29 +14,30 @@ import (
 
 type Generator struct {
 	cfg     *config.Config
-	pool    *connection.Pool
+	Pool    connection.Pool
 	limiter *rate.Limiter
 	ctx     context.Context
 	cancel  context.CancelFunc
 	wg      sync.WaitGroup
+	logger  *slog.Logger
 }
 
-func New(cfg *config.Config) *Generator {
+func New(cfg *config.Config, logger *slog.Logger, pool connection.Pool) *Generator {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &Generator{
 		cfg:     cfg,
-		pool:    connection.NewPool(cfg.BaseURL),
+		Pool:    pool,
 		limiter: rate.NewLimiter(rate.Limit(cfg.Rate.RequestsPerSecond), 1),
 		ctx:     ctx,
 		cancel:  cancel,
+		logger:  logger,
 	}
 }
 
 func (g *Generator) Start() error {
-	g.wg.Add(1)
-	go g.run()
+	err := g.run()
 	g.wg.Wait()
-	return nil
+	return err
 }
 
 func (g *Generator) Stop() {
@@ -45,11 +46,10 @@ func (g *Generator) Stop() {
 }
 
 func (g *Generator) run() error {
-	defer g.wg.Done()
-	log.Printf("Starting workload generation with rate: %d req/s", g.cfg.Rate.RequestsPerSecond)
+	g.logger.Info("Starting workload generation", "rate", g.cfg.Rate.RequestsPerSecond)
 
 	interval := time.Second / time.Duration(g.cfg.Rate.RequestsPerSecond)
-	log.Printf("Calculated ticker interval: %v", interval)
+	g.logger.Info("Calculated ticker interval", "interval", interval)
 
 	ticker := time.NewTicker(interval)
 	startTime := time.Now()
@@ -58,36 +58,35 @@ func (g *Generator) run() error {
 	for {
 		select {
 		case <-g.ctx.Done():
-			log.Printf("Generator stopped. Total requests: %d", requestCount)
+			g.logger.Info("Generator stopped", "totalRequests", requestCount)
 			return nil
 		case <-ticker.C:
-			//log.Printf("Tick at %v", time.Now())
+			//g.logger.Info("Tick", "time", time.Now())
 			if err := g.limiter.Wait(g.ctx); err != nil {
-				log.Printf("Rate limiter error: %v", err)
+				g.logger.Error("Rate limiter error", "error", err)
 				return err
 			}
 
 			for _, target := range g.cfg.Targets {
 				g.wg.Add(1)
-				go func(t config.Target) {
+				go func(target *config.Target) {
 					defer g.wg.Done()
 					start := time.Now()
-					resp, err := g.pool.Get(t)
+					resp, err := g.Pool.Get(target)
 					if err != nil {
-						log.Printf("Request error for %s: %v", t.URL, err)
+						g.logger.Error("Request error", "target", target.URL, "error", err)
 						return
 					}
 					defer resp.Body.Close()
 
 					duration := time.Since(start)
-					log.Printf("Request to %s completed in %v with status %d",
-						t.URL, duration, resp.StatusCode)
+					g.logger.Info("Success", "target", target.URL, "latency", duration, "status", resp.StatusCode)
 					requestCount++
 				}(target)
 			}
 
 			if g.cfg.Rate.Duration.Duration > 0 && time.Since(startTime) > g.cfg.Rate.Duration.Duration {
-				log.Printf("Duration %v reached, stopping generator", g.cfg.Rate.Duration.Duration)
+				g.logger.Info("Duration reached", "duration", g.cfg.Rate.Duration.Duration)
 				g.Stop()
 				return nil
 			}

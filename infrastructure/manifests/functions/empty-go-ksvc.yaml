@@ -1,0 +1,93 @@
+apiVersion: serving.knative.dev/v1
+kind: Service
+metadata:
+  annotations:
+    dapr.io/app-id: empty-go
+    dapr.io/app-port: "8080"
+    dapr.io/enable-api-logging: "true"
+    dapr.io/enabled: "true"
+    dapr.io/metrics-port: "9092"
+    serving.knative.dev/creator: kubecfg-
+    serving.knative.dev/lastModifier: kubecfg-
+  creationTimestamp: "2024-12-12T12:34:51Z"
+  generation: 1
+  labels:
+    boson.dev/function: "true"
+    boson.dev/runtime: go
+    function.knative.dev: "true"
+    function.knative.dev/name: empty-go
+    function.knative.dev/runtime: go
+  name: empty-go
+  namespace: functions
+  resourceVersion: "4473"
+  uid: c2fbf8f5-32f3-4acd-b3c7-f03f323e3b4b
+spec:
+  template:
+    metadata:
+      annotations:
+        dapr.io/app-id: empty-go
+        dapr.io/app-port: "8080"
+        dapr.io/enable-api-logging: "true"
+        dapr.io/enabled: "true"
+        dapr.io/metrics-port: "9092"
+      creationTimestamp: null
+      labels:
+        boson.dev/function: "true"
+        boson.dev/runtime: go
+        function.knative.dev: "true"
+        function.knative.dev/name: empty-go
+        function.knative.dev/runtime: go
+    spec:
+      containerConcurrency: 0
+      containers:
+      - env:
+        - name: BUILT
+          value: 20241212T133451
+        - name: ADDRESS
+          value: 0.0.0.0
+        image: docker.io/luccadibenedetto/empty-go:latest
+        livenessProbe:
+          httpGet:
+            path: /health/liveness
+            port: 0
+        name: user-container
+        readinessProbe:
+          httpGet:
+            path: /health/readiness
+            port: 0
+          successThreshold: 1
+        resources: {}
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          runAsNonRoot: true
+          seccompProfile:
+            type: RuntimeDefault
+      enableServiceLinks: false
+      timeoutSeconds: 300
+  traffic:
+  - latestRevision: true
+    percent: 100
+status:
+  address:
+    url: http://empty-go.functions.svc.cluster.local
+  conditions:
+  - lastTransitionTime: "2024-12-12T12:35:01Z"
+    status: "True"
+    type: ConfigurationsReady
+  - lastTransitionTime: "2024-12-12T12:35:01Z"
+    status: "True"
+    type: Ready
+  - lastTransitionTime: "2024-12-12T12:35:01Z"
+    status: "True"
+    type: RoutesReady
+  latestCreatedRevisionName: empty-go-00001
+  latestReadyRevisionName: empty-go-00001
+  observedGeneration: 1
+  traffic:
+  - latestRevision: true
+    percent: 100
+    revisionName: empty-go-00001
+  url: http://empty-go.functions.example.com
