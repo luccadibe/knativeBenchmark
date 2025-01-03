@@ -193,3 +193,73 @@ Think of it like a bouncer at a crowded club - when too many people try to enter
 I need to find the actual correct casue. maybe changiing config is not enough bc the envoy might be missing more resources.
 -> find bottleneck
 -> see knative metrics . do the components loook like they are working fine?
+
+Other than that, the next step is to automatise the whole benchmark.
+the workflow will more or less be:
+1. "just up"  and "just install-knative"
+2. "just benchmark"
+  a. The deployer will deploy a function / a set of functions / an event based chain of functions with different configurations
+  b. We trigger the workload generator to send requests to the functions
+  c. We run health checks on knative
+3. "just collect-results"
+4. "just down"
+
+
+For that I first need to correctly specify the benchmark design.
+The event based chain of functions is not done yet.
+Eventing flows: https://knative.dev/docs/eventing/flows/
+
+Sequence Spec¶ https://knative.dev/docs/eventing/flows/sequence/sequence-terminal/
+Sequence has three parts for the Spec:
+
+Steps which defines the in-order list of Subscribers, aka, which functions are executed in the listed order. These are specified using the messaging.v1.SubscriberSpec just like you would when creating Subscription. Each step should be Addressable.
+ChannelTemplate defines the Template which will be used to create Channels between the steps.
+Reply (Optional) Reference to where the results of the final step in the sequence are sent to.
+Sequence Status¶
+Sequence has four parts for the Status:
+
+Conditions which detail the overall Status of the Sequence object
+ChannelStatuses which convey the Status of underlying Channel resources that are created as part of this Sequence. It is an array and each Status corresponds to the Step number, so the first entry in the array is the Status of the Channel before the first Step.
+SubscriptionStatuses which convey the Status of underlying Subscription resources that are created as part of this Sequence. It is an array and each Status corresponds to the Step number, so the first entry in the array is the Subscription which is created to wire the first channel to the first step in the Steps array.
+AddressStatus which is exposed so that Sequence can be used where Addressable can be used. Sending to this address will target the Channel which is fronting the first Step in the Sequence.
+//FROM THE EVENTING DOCS
+apiVersion: flows.knative.dev/v1
+kind: Sequence
+metadata:
+  name: sequence
+spec:
+  channelTemplate:
+    apiVersion: messaging.knative.dev/v1
+    kind: InMemoryChannel
+  steps:
+    - ref:
+        apiVersion: serving.knative.dev/v1
+        kind: Service
+        name: first
+    - ref:
+        apiVersion: serving.knative.dev/v1
+        kind: Service
+        name: second
+    - ref:
+        apiVersion: serving.knative.dev/v1
+        kind: Service
+        name: third
+
+the actual event is base64 encoded in the data field of the event.
+because we want to benchmark the performance of the knative components, we really dont care about the actual event or the logic that the functions do. 
+I suspect that data serialization and deserialization is gonna be the bottleneck, but not sure.
+So the functions will just recieve the event and append their name to the data field.
+
+Important for the report:
+Developers can create their own sources via CRDs and use the knative duck type to declare them as sources.
+https://github.com/knative/eventing/blob/52792ea9874fae8e2cbe1a6387ebe8bb3d6184b3/docs/spec/sources.md#L4
+Knative Eventing defines an EventType object to make it easier for consumers to discover the types of events they can consume from Brokers or Channels.
+
+https://knative.dev/docs/eventing/event-registry/
+
+Table with the implemented event sources: https://knative.dev/docs/eventing/sources/#knative-sources
+ContainerSource looks like the one I need to generate the events to trigger the event based chain of functions.
+The ContainerSource instantiates container image(s) that can generate events until the ContainerSource is deleted. This may be used, for example, to poll an FTP server for new files or generate events at a set time interval. Given a spec.template with at least a container image specified, the ContainerSource keeps a Pod running with the specified image(s). K_SINK (destination address) and KE_CE_OVERRIDES (JSON CloudEvents attributes) environment variables are injected into the running image(s). It is used by multiple other Sources as underlying infrastructure. Refer to the Container Source example for more details.
+https://knative.dev/docs/eventing/custom-event-source/containersource/
+
+

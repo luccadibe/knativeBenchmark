@@ -7,11 +7,12 @@ import (
 	"sync"
 	"time"
 
-	"workload-generator/internal/config"
+	"github.com/luccadibe/knativeBenchmark/pkg/config"
 )
 
 type Pool interface {
 	Get(target *config.Target) (*http.Response, error)
+	Post(target *config.Target, body io.Reader) (*http.Response, error)
 	Targets() map[*config.Target]int
 }
 
@@ -54,6 +55,36 @@ func (p *pool) Get(target *config.Target) (*http.Response, error) {
 	return p.client.Do(req)
 }
 
+func (p *pool) Post(target *config.Target, body io.Reader) (*http.Response, error) {
+
+	req, err := http.NewRequest("POST", target.URL, body)
+	if err != nil {
+		return nil, err
+	}
+
+	// This is important for cloudevent https://github.com/cloudevents/spec/blob/v1.0.2/cloudevents/bindings/http-protocol-binding.md
+	// For now we implement only the binary mode.
+	/* POST /someresource HTTP/1.1
+	Host: webhook.example.com
+	ce-specversion: 1.0
+	ce-type: com.example.someevent
+	ce-time: 2018-04-05T03:56:24Z
+	ce-id: 1234-1234-1234
+	ce-source: /mycontext/subcontext
+	    .... further attributes ...
+	Content-Type: application/json; charset=utf-8
+	Content-Length: nnnn
+	{
+	    ... application data ...
+	} */
+
+	for k, v := range target.Headers {
+		req.Header.Set(k, v)
+	}
+
+	return p.client.Do(req)
+}
+
 func (p *pool) Targets() map[*config.Target]int {
 	return p.targets
 }
@@ -64,6 +95,18 @@ type poolMock struct {
 }
 
 func (p *poolMock) Get(target *config.Target) (*http.Response, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.targets[target]++
+	mockResponse := &http.Response{
+		StatusCode: http.StatusOK,
+		// This is because we need to call Close() on the body in the generator
+		Body: io.NopCloser(strings.NewReader("")),
+	}
+	return mockResponse, nil
+}
+
+func (p *poolMock) Post(target *config.Target, body io.Reader) (*http.Response, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.targets[target]++

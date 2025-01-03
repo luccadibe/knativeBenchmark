@@ -1,6 +1,7 @@
 package generator
 
 import (
+	"bytes"
 	"context"
 	"io"
 	"log/slog"
@@ -8,13 +9,20 @@ import (
 	"sync"
 	"time"
 
+	cloudevents "github.com/cloudevents/sdk-go/v2/event"
 	"golang.org/x/time/rate"
 
-	"workload-generator/internal/config"
-	"workload-generator/internal/connection"
+	"github.com/luccadibe/knativeBenchmark/pkg/config"
+	"github.com/luccadibe/knativeBenchmark/pkg/connection"
 )
 
-type Generator struct {
+type Generator interface {
+	Start() error
+	Stop()
+	GetPool() connection.Pool
+}
+
+type generator struct {
 	cfg     *config.Config
 	Pool    connection.Pool
 	limiter *rate.Limiter
@@ -24,9 +32,9 @@ type Generator struct {
 	logger  *slog.Logger
 }
 
-func New(cfg *config.Config, logger *slog.Logger, pool connection.Pool) *Generator {
+func New(cfg *config.Config, logger *slog.Logger, pool connection.Pool) Generator {
 	ctx, cancel := context.WithCancel(context.Background())
-	return &Generator{
+	return &generator{
 		cfg:     cfg,
 		Pool:    pool,
 		limiter: rate.NewLimiter(rate.Limit(cfg.Rate.RequestsPerSecond), 1),
@@ -36,18 +44,22 @@ func New(cfg *config.Config, logger *slog.Logger, pool connection.Pool) *Generat
 	}
 }
 
-func (g *Generator) Start() error {
+func (g *generator) Start() error {
 	err := g.run()
 	g.wg.Wait()
 	return err
 }
 
-func (g *Generator) Stop() {
+func (g *generator) Stop() {
 	g.cancel()
 	g.wg.Wait()
 }
 
-func (g *Generator) run() error {
+func (g *generator) GetPool() connection.Pool {
+	return g.Pool
+}
+
+func (g *generator) run() error {
 	g.logger.Info("Starting workload generation", "rate", g.cfg.Rate.RequestsPerSecond)
 	if g.cfg.Rate.RequestsPerSecond == 0 {
 		g.logger.Info("Rate 0 detected, running for maximum throughput")
@@ -100,7 +112,7 @@ func (g *Generator) run() error {
 	}
 }
 
-func (g *Generator) runMaxThroughput() error {
+func (g *generator) runMaxThroughput() error {
 	startTime := time.Now()
 	requestCount := 0
 
@@ -148,6 +160,74 @@ func (g *Generator) runMaxThroughput() error {
 				g.Stop()
 				return nil
 			}
+		}
+	}
+}
+
+var _ Generator = &cloudEventGenerator{}
+
+type cloudEventGenerator struct {
+	cfg     *config.Config
+	event   *cloudevents.Event
+	Pool    connection.Pool
+	limiter *rate.Limiter
+	ctx     context.Context
+	cancel  context.CancelFunc
+	wg      sync.WaitGroup
+	logger  *slog.Logger
+}
+
+// GetPool implements Generator.
+func (c *cloudEventGenerator) GetPool() connection.Pool {
+	return c.Pool
+}
+
+// Start implements Generator.
+func (c *cloudEventGenerator) Start() error {
+	err := c.run()
+	c.wg.Wait()
+	return err
+}
+
+// Stop implements Generator.
+func (c *cloudEventGenerator) Stop() {
+	c.cancel()
+	c.wg.Wait()
+}
+
+func NewCloudEventGenerator(cfg *config.Config, event *cloudevents.Event, pool connection.Pool, logger *slog.Logger) Generator {
+	return &cloudEventGenerator{
+		cfg:    cfg,
+		event:  event,
+		Pool:   pool,
+		logger: logger,
+	}
+}
+
+func (c *cloudEventGenerator) run() error {
+
+	c.logger.Info("Starting workload generation", "rate", c.cfg.Rate.RequestsPerSecond)
+	c.logger.Info("Using cloudevent", "event", c.event)
+
+	interval := time.Second / time.Duration(c.cfg.Rate.RequestsPerSecond)
+	c.logger.Info("Calculated ticker interval", "interval", interval)
+
+	ticker := time.NewTicker(interval)
+	//startTime := time.Now()
+	requestCount := 0
+
+	for {
+		select {
+		case <-c.ctx.Done():
+			c.logger.Info("Generator stopped", "totalRequests", requestCount)
+			return nil
+		case <-ticker.C:
+			c.wg.Add(1)
+			go func() {
+				defer c.wg.Done()
+				//TODO
+				c.Pool.Post(c.cfg.Targets[0], bytes.NewReader(c.event.Data()))
+			}()
 		}
 	}
 }

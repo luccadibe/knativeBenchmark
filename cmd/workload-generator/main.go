@@ -5,10 +5,10 @@ import (
 	"log/slog"
 	"os"
 
-	"workload-generator/internal/config"
-	"workload-generator/internal/connection"
-	"workload-generator/internal/generator"
-	"workload-generator/internal/store"
+	"github.com/luccadibe/knativeBenchmark/pkg/config"
+	"github.com/luccadibe/knativeBenchmark/pkg/connection"
+	"github.com/luccadibe/knativeBenchmark/pkg/generator"
+	"github.com/luccadibe/knativeBenchmark/pkg/store"
 )
 
 func main() {

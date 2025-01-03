@@ -3,7 +3,8 @@ package config
 import (
 	"os"
 	"time"
-	"workload-generator/internal/store"
+
+	"github.com/luccadibe/knativeBenchmark/pkg/store"
 
 	"gopkg.in/yaml.v2"
 )

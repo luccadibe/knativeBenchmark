@@ -225,4 +225,6 @@ debug-cluster: _check-env
         --dry-run \
         --output=yaml
 
-
+build:
+    docker build -t luccadibenedetto/workload-generator:latest --push -f ../Dockerfile.wg . 
+    

@@ -1,0 +1,5 @@
+specVersion: 0.36.0
+name: go-handler-event
+runtime: go
+created: 2025-01-03T18:33:32.848225055+01:00
+invoke: cloudevent

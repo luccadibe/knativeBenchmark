@@ -1,9 +1,12 @@
-module deployer
+module github.com/luccadibe/knativeBenchmark
 
 go 1.23.2
 
 require (
+	github.com/cloudevents/sdk-go/v2 v2.15.2
 	github.com/stretchr/testify v1.9.0
+	golang.org/x/time v0.7.0
+	gopkg.in/yaml.v2 v2.4.0
 	k8s.io/api v0.32.0
 	k8s.io/apimachinery v0.32.0
 	k8s.io/client-go v0.32.0
@@ -46,7 +49,6 @@ require (
 	golang.org/x/sys v0.26.0 // indirect
 	golang.org/x/term v0.25.0 // indirect
 	golang.org/x/text v0.19.0 // indirect
-	golang.org/x/time v0.7.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.4.0 // indirect
 	google.golang.org/protobuf v1.35.1 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
