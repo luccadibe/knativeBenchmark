@@ -35,4 +35,5 @@ spec:
           operator: "Equal"
           value: "workload-generator"
           effect: "NoSchedule" 
-      
+      nodeSelector:
+        dedicated: "workload-generator"

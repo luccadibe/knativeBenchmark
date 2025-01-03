@@ -1,8 +1,14 @@
 specVersion: 0.36.0
 name: empty-ts-http
 runtime: typescript
+image: docker.io/luccadibenedetto/empty-ts-http:latest
+namespace: functions
 created: 2024-12-10T11:17:23.589557768+01:00
 build:
+  builder: pack
   buildEnvs:
   - name: BP_NODE_RUN_SCRIPTS
     value: build
+deploy:
+  namespace: functions
+  image: docker.io/luccadibenedetto/empty-ts-http@sha256:ec14f22ffe7b6bc127789c06c9f3a1a9fcef7b6ecb9eb5a70185d9eb807723af

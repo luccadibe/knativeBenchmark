@@ -2,7 +2,9 @@ package generator
 
 import (
 	"context"
+	"io"
 	"log/slog"
+	"net/http"
 	"sync"
 	"time"
 
@@ -47,6 +49,10 @@ func (g *Generator) Stop() {
 
 func (g *Generator) run() error {
 	g.logger.Info("Starting workload generation", "rate", g.cfg.Rate.RequestsPerSecond)
+	if g.cfg.Rate.RequestsPerSecond == 0 {
+		g.logger.Info("Rate 0 detected, running for maximum throughput")
+		return g.runMaxThroughput()
+	}
 
 	interval := time.Second / time.Duration(g.cfg.Rate.RequestsPerSecond)
 	g.logger.Info("Calculated ticker interval", "interval", interval)
@@ -75,6 +81,58 @@ func (g *Generator) run() error {
 					resp, err := g.Pool.Get(target)
 					if err != nil {
 						g.logger.Error("Request error", "target", target.URL, "error", err)
+						return
+					}
+					defer resp.Body.Close()
+
+					duration := time.Since(start)
+					g.logger.Info("Success", "target", target.URL, "latency", duration, "status", resp.StatusCode)
+					requestCount++
+				}(target)
+			}
+
+			if g.cfg.Rate.Duration.Duration > 0 && time.Since(startTime) > g.cfg.Rate.Duration.Duration {
+				g.logger.Info("Duration reached", "duration", g.cfg.Rate.Duration.Duration)
+				g.Stop()
+				return nil
+			}
+		}
+	}
+}
+
+func (g *Generator) runMaxThroughput() error {
+	startTime := time.Now()
+	requestCount := 0
+
+	for {
+		select {
+		case <-g.ctx.Done():
+			g.logger.Info("Generator stopped", "totalRequests", requestCount)
+			return nil
+		default:
+			for _, target := range g.cfg.Targets {
+				g.wg.Add(1)
+				go func(target *config.Target) {
+					defer g.wg.Done()
+					start := time.Now()
+					resp, err := g.Pool.Get(target)
+					if err != nil {
+						g.logger.Error("Request error", "target", target.URL, "error", err)
+						requestCount++
+						return
+					}
+					if resp.StatusCode != http.StatusOK {
+						g.logger.Error("Request failed", "target", target.URL, "status", resp.StatusCode)
+						body, err := io.ReadAll(resp.Body)
+						if err != nil {
+							g.logger.Error("Failed to read response body", "target", target.URL, "error", err)
+						}
+						g.logger.Error("Non-200 response",
+							"target", target.URL,
+							"status", resp.StatusCode,
+							"headers", resp.Header,
+							"body", string(body))
+						requestCount++
 						return
 					}
 					defer resp.Body.Close()

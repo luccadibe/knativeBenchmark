@@ -16,6 +16,7 @@ import (
 
 func main() {
 	action := flag.String("action", "deploy", "Action to perform: deploy, delete")
+	name := flag.String("name", "empty-go", "Name of the function")
 	image := flag.String("image", "empty-go", "Image to deploy")
 	amount := flag.Int("amount", 1, "Amount of functions to deploy")
 	flag.Parse()
@@ -38,7 +39,8 @@ func main() {
 	case "deploy":
 		// Deploy multiple functions
 		for i := 0; i < *amount; i++ {
-			ksvc := createKnativeService(fmt.Sprintf("empty-go-%d", i), *image)
+			newName := fmt.Sprintf("%s-%d", *name, i)
+			ksvc := createKnativeService(newName, *image)
 			err := k8sClient.Create(context.Background(), ksvc)
 			if err != nil {
 				fmt.Printf("Failed to create service %d: %v\n", i, err)
@@ -49,7 +51,8 @@ func main() {
 	case "delete":
 		// Delete multiple functions
 		for i := 0; i < *amount; i++ {
-			ksvc := createKnativeService(fmt.Sprintf("empty-go-%d", i), *image)
+			newName := fmt.Sprintf("%s-%d", *name, i)
+			ksvc := createKnativeService(newName, *image)
 			err := k8sClient.Delete(context.Background(), ksvc)
 			if err != nil {
 				fmt.Printf("Failed to delete service %d: %v\n", i, err)
@@ -132,51 +135,80 @@ func ptr[T any](v T) *T {
 
 func patchFunctionService(client client.Client, name string, params map[string]string) {
 	/*
-				containerConcurrency
-		int64	(Optional)
-		ContainerConcurrency specifies the maximum allowed in-flight (concurrent) requests per container of the Revision. Defaults to 0 which means concurrency to the application is not limited, and the system decides the target concurrency for the autoscaler.
 
-		timeoutSeconds
-		int64	(Optional)
-		TimeoutSeconds is the maximum duration in seconds that the request instance is allowed to respond to a request. If unspecified, a system default will be provided.
+			resources
+		requests
+		cpu: A CPU resource request for the container with deployed function. See related Kubernetes docs.
+		memory: A memory resource request for the container with deployed function. See related Kubernetes docs.
+		limits
+		cpu: A CPU resource limit for the container with deployed function. See related Kubernetes docs.
+		memory: A memory resource limit for the container with deployed function. See related Kubernetes docs.
 
-		responseStartTimeoutSeconds
-		int64	(Optional)
-		ResponseStartTimeoutSeconds is the maximum duration in seconds that the request routing layer will wait for a request delivered to a container to begin sending any network traffic.
+		from func.yaml:
 
-		idleTimeoutSeconds
-		int64	(Optional)
-		IdleTimeoutSeconds is the maximum duration in seconds a request will be allowed to stay open while not receiving any bytes from the user’s application. If unspecified, a system default will be provided.
+		options:
+		  scale:
+		    min: 0
+		    max: 10
+		    metric: concurrency
+		    target: 75
+		    utilization: 75
+		  resources:
+		    requests:
+		      cpu: 100m
+		      memory: 128Mi
+		    limits:
+		      cpu: 1000m
+		      memory: 256Mi
+		      concurrency: 100
 
 
-			apiVersion: serving.knative.dev/v1
-		kind: Service
-		metadata:
-		  name: helloworld-go
-		  namespace: default
-		spec:
-		  template:
-		    metadata:
-		      annotations:
-			  	-> this needs to be patched to change the autoscaling strategy.
-				Possible values: "concurrency", "rps", "cpu", "memory"
-				for concurrency:
-		        autoscaling.knative.dev/metric: "concurrency"
-		        autoscaling.knative.dev/target-utilization-percentage: "70"
 
-				for rps:
-				autoscaling.knative.dev/metric: "rps"
-		        autoscaling.knative.dev/target: "150"
+						containerConcurrency
+				int64	(Optional)
+				ContainerConcurrency specifies the maximum allowed in-flight (concurrent) requests per container of the Revision. Defaults to 0 which means concurrency to the application is not limited, and the system decides the target concurrency for the autoscaler.
 
-				for cpu:
-				autoscaling.knative.dev/class: "hpa.autoscaling.knative.dev"
-		        autoscaling.knative.dev/metric: "cpu"
-		        autoscaling.knative.dev/target: "100"
+				timeoutSeconds
+				int64	(Optional)
+				TimeoutSeconds is the maximum duration in seconds that the request instance is allowed to respond to a request. If unspecified, a system default will be provided.
 
-				for memory:
-				autoscaling.knative.dev/class: "hpa.autoscaling.knative.dev"
-		        autoscaling.knative.dev/metric: "memory"
-		        autoscaling.knative.dev/target: "75"
+				responseStartTimeoutSeconds
+				int64	(Optional)
+				ResponseStartTimeoutSeconds is the maximum duration in seconds that the request routing layer will wait for a request delivered to a container to begin sending any network traffic.
+
+				idleTimeoutSeconds
+				int64	(Optional)
+				IdleTimeoutSeconds is the maximum duration in seconds a request will be allowed to stay open while not receiving any bytes from the user’s application. If unspecified, a system default will be provided.
+
+
+					apiVersion: serving.knative.dev/v1
+				kind: Service
+				metadata:
+				  name: helloworld-go
+				  namespace: default
+				spec:
+				  template:
+				    metadata:
+				      annotations:
+					  	-> this needs to be patched to change the autoscaling strategy.
+						Possible values: "concurrency", "rps", "cpu", "memory"
+						for concurrency:
+				        autoscaling.knative.dev/metric: "concurrency"
+				        autoscaling.knative.dev/target-utilization-percentage: "70"
+
+						for rps:
+						autoscaling.knative.dev/metric: "rps"
+				        autoscaling.knative.dev/target: "150"
+
+						for cpu:
+						autoscaling.knative.dev/class: "hpa.autoscaling.knative.dev"
+				        autoscaling.knative.dev/metric: "cpu"
+				        autoscaling.knative.dev/target: "100"
+
+						for memory:
+						autoscaling.knative.dev/class: "hpa.autoscaling.knative.dev"
+				        autoscaling.knative.dev/metric: "memory"
+				        autoscaling.knative.dev/target: "75"
 	*/
 
 }

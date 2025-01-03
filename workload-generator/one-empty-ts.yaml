@@ -1,5 +1,5 @@
 targets:
-  - url: "http://empty-ts-http-0.functions.svc.cluster.local"
+  - url: "http://empty-ts-http.functions.svc.cluster.local"
     weight: 1
     headers:
       Content-Type: "application/json"

@@ -166,3 +166,30 @@ then visiting http://localhost:8889/metrics
 Next step is adding a simple victoriametrics database to store the metrics.
 Hopefully we can do this easily directly with a deployment and a pvc, i dont want more than that.
 
+para deploy simepre:
+docker login -u luccadibenedetto
+-> token
+
+func deploy --image=docker.io/luccadibenedetto/<name of the function>:latest --build=true --namespace=functions
+
+
+
+current issue
+
+Error Summary
+Error Type: 503 Service Unavailable
+Source: Envoy/Kourier Gateway
+Key Indicators:
+X-Envoy-Overloaded: true
+Error message: "upstream connect error or disconnect/reset before headers. reset reason: overflow"
+Very high latencies (~19 seconds)
+Root Cause:
+The gateway (Envoy) is becoming overloaded with too many concurrent requests. When this happens, Envoy's circuit breaker triggers and starts rejecting requests to protect the system from cascading failures. This is likely due to:
+Too many requests being sent without adequate backoff/throttling
+Default circuit breaker limits being too low for your workload
+3. Possible bottleneck in the Knative service scaling
+Think of it like a bouncer at a crowded club - when too many people try to enter at once, the bouncer starts turning people away (503 errors) to prevent overcrowding inside.
+
+I need to find the actual correct casue. maybe changiing config is not enough bc the envoy might be missing more resources.
+-> find bottleneck
+-> see knative metrics . do the components loook like they are working fine?
