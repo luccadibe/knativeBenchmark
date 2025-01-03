@@ -2,7 +2,7 @@
 export TF_VAR_project_id := "csb-benchmark"       # Your GCP project ID
 export CLUSTER_NAME := "csb.lucca.org"            # Your cluster name
 export TF_VAR_zone := "europe-west1-b"             # GCP zone for the cluster
-export NODE_COUNT := "2"              # Number of worker nodes
+export NODE_COUNT := "5"              # 1 monitoring + 1 workload-gen + 1 knative-system + 2 for functions
 export CONTROL_PLANE_SIZE := "e2-standard-2"      # Machine type for control plane
 export NODE_SIZE := "e2-standard-2"               # Machine type for worker nodes
 export TF_VAR_bucket_name := "csb-benchmark-state"      # Must be globally unique
@@ -69,7 +69,9 @@ up spot="": _check-env
         --control-plane-count=1 \
         --networking=cilium \
         --cloud=gce \
-        --project="${TF_VAR_project_id}"
+        --project="${TF_VAR_project_id}" \
+        --set="spec.kubeAPIServer.enableAdmissionPlugins=PodNodeSelector" \
+        --set="spec.kubeAPIServer.enableAdmissionPlugins=PodTolerationRestriction" 
 
     if [ -n "$spot" ]; then
         # Configure spot instances
@@ -88,11 +90,12 @@ up spot="": _check-env
     kops validate cluster --wait 10m
     
     kubectl create namespace functions
+    kubectl create namespace metrics
     # Setup node labels - get second node (first is control plane)
-    NODE_NAME=$(kubectl get nodes --no-headers -o custom-columns=":metadata.name" | tail -1)
-    kubectl label node ${NODE_NAME} workload-generator=true
+    #NODE_NAME=$(kubectl get nodes --no-headers -o custom-columns=":metadata.name" | tail -1)
+    #kubectl label node ${NODE_NAME} workload-generator=true
     # Taint the node so only workload generator pods can run there
-    kubectl taint node ${NODE_NAME} dedicated=workload-generator:NoSchedule
+    #kubectl taint node ${NODE_NAME} dedicated=workload-generator:NoSchedule
 
     # Create the persistent volume
     kubectl apply -f manifests/pv.yaml
@@ -101,13 +104,40 @@ up spot="": _check-env
     # Create the deployment
     kubectl apply -f manifests/workload-generator/deployment.yaml
 
+    # After cluster is ready, label and taint nodes
+    echo "Setting up node labels and taints..."
+    
+    # Get node names (excluding control-plane)
+    NODES=($(kubectl get nodes --no-headers -o custom-columns=":metadata.name" | tail -n +2))
+    
+    # First worker node for metrics
+    kubectl label node ${NODES[0]} dedicated=metrics
+    kubectl taint node ${NODES[0]} dedicated=metrics:NoSchedule
+    
+    # Second worker node for workload generator
+    kubectl label node ${NODES[1]} dedicated=workload-generator
+    kubectl taint node ${NODES[1]} dedicated=workload-generator:NoSchedule
+    
+    # Third worker node for Knative system components (serving and eventing)
+    kubectl label node ${NODES[2]} dedicated=knative
+    kubectl taint node ${NODES[2]} dedicated=knative:NoSchedule
+
+    # The remaining nodes (NODES[3] and NODES[4]) are left untainted for function scaling
+    echo "Remaining nodes available for function scaling"
+
 install-knative: _check-env
     kubectl apply -f https://github.com/knative/serving/releases/download/knative-v1.16.0/serving-crds.yaml
     kubectl apply -f https://github.com/knative/serving/releases/download/knative-v1.16.0/serving-core.yaml
 
 
-    #kubectl apply -f https://github.com/knative/eventing/releases/download/knative-v1.16.3/eventing-crds.yaml
-    #kubectl apply -f https://github.com/knative/eventing/releases/download/knative-v1.16.3/eventing-core.yaml
+    kubectl apply -f https://github.com/knative/eventing/releases/download/knative-v1.16.3/eventing-crds.yaml
+    kubectl apply -f https://github.com/knative/eventing/releases/download/knative-v1.16.3/eventing-core.yaml
+
+    # Add NodeSelector annotation to knative namespaces
+    kubectl annotate namespace knative-serving scheduler.alpha.kubernetes.io/node-selector="dedicated=knative"
+    kubectl annotate namespace knative-serving scheduler.alpha.kubernetes.io/defaultTolerations='[{"operator": "Equal", "value": "knative", "effect": "NoSchedule", "key": "dedicated"}]'
+    kubectl annotate namespace knative-eventing scheduler.alpha.kubernetes.io/node-selector="dedicated=knative"
+    kubectl annotate namespace knative-eventing scheduler.alpha.kubernetes.io/defaultTolerations='[{"operator": "Equal", "value": "knative", "effect": "NoSchedule", "key": "dedicated"}]'
 
 
     # Kourier
@@ -128,6 +158,28 @@ install-knative: _check-env
       --type merge \
       --patch '{"data":{"example.com":""}}'
 
+
+    helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+    helm repo update
+    helm install prometheus prometheus-community/kube-prometheus-stack -n metrics -f manifests/prometheus/values.yaml
+
+    # Add NodeSelector annotation to metrics namespace
+    kubectl annotate namespace metrics scheduler.alpha.kubernetes.io/node-selector="dedicated=metrics"
+    kubectl annotate namespace metrics scheduler.alpha.kubernetes.io/defaultTolerations='[{"operator": "Equal", "value": "metrics", "effect": "NoSchedule", "key": "dedicated"}]'
+
+    # SCRAPE INTERVALS OF KNATIVE COMPONENTS
+
+    kubectl apply -f https://raw.githubusercontent.com/knative-extensions/monitoring/main/servicemonitor.yaml
+    kubectl patch servicemonitor controller -n knative-serving --type json -p '[{"op": "replace", "path": "/spec/endpoints/0/interval", "value": "5s"}]'
+    kubectl patch servicemonitor autoscaler -n knative-serving --type json -p '[{"op": "replace", "path": "/spec/endpoints/0/interval", "value": "5s"}]'
+    kubectl patch servicemonitor activator -n knative-serving --type json -p '[{"op": "replace", "path": "/spec/endpoints/0/interval", "value": "5s"}]'
+    kubectl patch servicemonitor webhook -n knative-serving --type json -p '[{"op": "replace", "path": "/spec/endpoints/0/interval", "value": "5s"}]'
+
+
+    kubectl patch servicemonitor broker-filter -n knative-eventing --type json -p '[{"op": "replace", "path": "/spec/endpoints/0/interval", "value": "5s"}]'
+    kubectl patch servicemonitor broker-ingress -n knative-eventing --type json -p '[{"op": "replace", "path": "/spec/endpoints/0/interval", "value": "5s"}]'
+
+    echo "Done"
 
 # Destroy the cluster and clean up resources
 down: _check-env
@@ -151,3 +203,26 @@ get-cluster: _check-env
 get-kubeconfig: _check-env
     export KOPS_STATE_STORE="gs://$(terraform output -raw kops_state_store_bucket_name)" && \
     kops export kubeconfig --admin
+
+debug-cluster: _check-env
+    #!/bin/bash
+    terraform apply -auto-approve
+    export KOPS_STATE_STORE="gs://$(terraform output -raw kops_state_store_bucket_name)"
+    kops create cluster \
+        --name="${CLUSTER_NAME}" \
+        --state="${KOPS_STATE_STORE}" \
+        --zones="${TF_VAR_zone}" \
+        --control-plane-zones="${TF_VAR_zone}" \
+        --node-count="${NODE_COUNT}" \
+        --control-plane-size="${CONTROL_PLANE_SIZE}" \
+        --node-size="${NODE_SIZE}" \
+        --control-plane-count=1 \
+        --networking=cilium \
+        --cloud=gce \
+        --project="${TF_VAR_project_id}" \
+        --set="spec.kubeAPIServer.enableAdmissionPlugins=PodNodeSelector" \
+        --set="spec.kubeAPIServer.enableAdmissionPlugins=PodTolerationRestriction" \
+        --dry-run \
+        --output=yaml
+
+

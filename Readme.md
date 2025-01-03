@@ -118,3 +118,51 @@ Flags:
 
 
   https://knative.dev/docs/serving/revisions/revision-admin-config-options/
+
+  en el activator ahora mismo hay un error:
+  error while getting revision for commit noseque , claro cuando deployeamos el service con la API la revision no se crea automaticamente sino q se creaa cuendo pusheas la funcion con func deploy
+
+
+  luccadibe@DESKTOP-HT1I41R:~/projects/knative_benchmark/functions/echo-go-http$ func build --image=docker.io/luccadibenedetto/echo-go-http:latest
+Building function image
+Still building
+Still building
+Yes, still building
+🙌 Function built: docker.io/luccadibenedetto/echo-go-http:latest
+
+
+luccadibe@DESKTOP-HT1I41R:~/projects/knative_benchmark/functions/echo-go-http$ func deploy --image=docker.io/luccadibenedetto/echo-go-http:latest --build=false --namespace=functions
+Warning: namespace chosen is 'functions', but currently active namespace is 'default'. Continuing with deployment to 'functions'.
+Pushing function image to the registry "index.docker.io" using the "luccadibenedetto" user credentials
+🎯 Creating Triggers on the cluster
+✅ Function deployed in namespace "functions" and exposed at URL: 
+   http://echo-go-http.functions.example.com
+
+
+   luccadibe@DESKTOP-HT1I41R:~/projects/knative_benchmark/functions/echo-go-http$ func deploy --image=docker.io/luccadibenedetto/echo-go-http:latest --build=true --namespace=functions
+Warning: namespace chosen is 'functions', but currently active namespace is 'default'. Continuing with deployment to 'functions'.
+Building function image
+Still building
+Still building
+🙌 Function built: docker.io/luccadibenedetto/echo-go-http:latest
+Pushing function image to the registry "index.docker.io" using the "luccadibenedetto" user credentials
+🎯 Creating Triggers on the cluster
+✅ Function deployed in namespace "functions" and exposed at URL: 
+   http://echo-go-http.functions.example.com
+
+current issue is that there is no revision created automatically when we deploy with the API.
+In the end the services work fine, but I suspect that this could be a problem in the future.
+Maybe it causes knative to do extra work checking and reconciling.
+So i need a way to create a revision automatically when we deploy with the API.
+
+Another idea is to create all the revisions "manually" (small script that uses func deploy to create the revisions)
+and then point to the correct revision when we deploy with the API.
+
+-> also the metrics exported by knative are working fine . The collector is recieving them.
+Currently I only verified this by running:
+kubectl port-forward --namespace metrics deployment/otel-collector 8889
+then visiting http://localhost:8889/metrics
+
+Next step is adding a simple victoriametrics database to store the metrics.
+Hopefully we can do this easily directly with a deployment and a pvc, i dont want more than that.
+

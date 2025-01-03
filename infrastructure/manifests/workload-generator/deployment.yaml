@@ -12,8 +12,6 @@ spec:
       labels:
         app: workload-generator
     spec:
-      nodeSelector:
-          workload-generator: "true"
       containers:
       - name: workload-generator
         image: "luccadibenedetto/workload-generator:latest"
@@ -32,7 +30,6 @@ spec:
         hostPath:
           path: /var/log/workload-generator
           type: DirectoryOrCreate
-      
       tolerations:
         - key: "dedicated"
           operator: "Equal"

@@ -67,6 +67,7 @@
 - All Go code must:
   - Include unit tests
   - Follow Go best practices
+  - Never use inline if err syntax. Always check the error after with if err != nil{ ...}
 
 ## 7. Documentation Requirements
 

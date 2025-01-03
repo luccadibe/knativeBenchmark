@@ -1,0 +1,23 @@
+kube-state-metrics:
+  metricLabelsAllowlist:
+    - pods=[*]
+    - deployments=[app.kubernetes.io/name,app.kubernetes.io/component,app.kubernetes.io/instance]
+# Prometheus specific configuration
+prometheus:
+  prometheusSpec:
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    nodeSelector:
+      dedicated: metrics
+    tolerations:
+      - key: "dedicated"
+        operator: "Equal"
+        value: "metrics"
+        effect: "NoSchedule"
+server:
+  persistentVolume:
+    enabled: true
+    size: 10Gi
+    selector:
+      matchLabels:
+        app: prometheus

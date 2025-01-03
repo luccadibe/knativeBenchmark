@@ -1,15 +1,10 @@
 targets:
-  - url: "http://empty-go.functions.svc.cluster.local"
+  - url: "http://empty-go-0.functions.svc.cluster.local"
     weight: 1
     headers:
       Content-Type: "application/json"
-  - url: "http://empty-py-http.functions.svc.cluster.local"
-    weight: 2
-    headers:
-      Content-Type: "application/json"
-
 rate:
-  requestsPerSecond: 300
+  requestsPerSecond: 1000
   duration: 1m
 
   # HTTP client settings

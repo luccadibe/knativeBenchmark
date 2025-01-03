@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: config-deployment
+  namespace: knative-serving
+data:
+  kubernetes.podspec-tolerations: |
+    - key: "dedicated"
+      operator: "Equal"
+      value: "knative"
+      effect: "NoSchedule" 

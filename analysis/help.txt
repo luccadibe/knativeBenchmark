@@ -1,0 +1,275 @@
+# HELP knative_dev_eventing_controller_client_latency_seconds How long Kubernetes API requests take
+# HELP knative_dev_eventing_controller_client_results_total Total number of API requests (broken down by status code)
+# HELP knative_dev_eventing_controller_go_alloc_ratio The number of bytes of allocated heap objects.
+# HELP knative_dev_eventing_controller_go_bucket_hash_sys_ratio The number of bytes of memory in profiling bucket hash tables.
+# HELP knative_dev_eventing_controller_go_frees_ratio The cumulative count of heap objects freed.
+# HELP knative_dev_eventing_controller_go_gc_cpu_fraction_ratio The fraction of this program's available CPU time used by the GC since the program started.
+# HELP knative_dev_eventing_controller_go_gc_sys_ratio The number of bytes of memory in garbage collection metadata.
+# HELP knative_dev_eventing_controller_go_heap_alloc_ratio The number of bytes of allocated heap objects.
+# HELP knative_dev_eventing_controller_go_heap_idle_ratio The number of bytes in idle (unused) spans.
+# HELP knative_dev_eventing_controller_go_heap_in_use_ratio The number of bytes in in-use spans.
+# HELP knative_dev_eventing_controller_go_heap_objects_ratio The number of allocated heap objects.
+# HELP knative_dev_eventing_controller_go_heap_released_ratio The number of bytes of physical memory returned to the OS.
+# HELP knative_dev_eventing_controller_go_heap_sys_ratio The number of bytes of heap memory obtained from the OS.
+# HELP knative_dev_eventing_controller_go_last_gc_nanoseconds The time the last garbage collection finished, as nanoseconds since 1970 (the UNIX epoch).
+# HELP knative_dev_eventing_controller_go_lookups_ratio The number of pointer lookups performed by the runtime.
+# HELP knative_dev_eventing_controller_go_mallocs_ratio The cumulative count of heap objects allocated.
+# HELP knative_dev_eventing_controller_go_mcache_in_use_ratio The number of bytes of allocated mcache structures.
+# HELP knative_dev_eventing_controller_go_mcache_sys_ratio The number of bytes of memory obtained from the OS for mcache structures.
+# HELP knative_dev_eventing_controller_go_mspan_in_use_ratio The number of bytes of allocated mspan structures.
+# HELP knative_dev_eventing_controller_go_mspan_sys_ratio The number of bytes of memory obtained from the OS for mspan structures.
+# HELP knative_dev_eventing_controller_go_next_gc_ratio The target heap size of the next GC cycle.
+# HELP knative_dev_eventing_controller_go_num_forced_gc_ratio The number of GC cycles that were forced by the application calling the GC function.
+# HELP knative_dev_eventing_controller_go_num_gc_ratio The number of completed GC cycles.
+# HELP knative_dev_eventing_controller_go_other_sys_ratio The number of bytes of memory in miscellaneous off-heap runtime allocations.
+# HELP knative_dev_eventing_controller_go_stack_in_use_ratio The number of bytes in stack spans.
+# HELP knative_dev_eventing_controller_go_stack_sys_ratio The number of bytes of stack memory obtained from the OS.
+# HELP knative_dev_eventing_controller_go_sys_ratio The total bytes of memory obtained from the OS.
+# HELP knative_dev_eventing_controller_go_total_alloc_ratio The cumulative bytes allocated for heap objects.
+# HELP knative_dev_eventing_controller_go_total_gc_pause_ns_nanoseconds The cumulative nanoseconds in GC stop-the-world pauses since the program started.
+# HELP knative_dev_eventing_controller_reconcile_count_total Number of reconcile operations
+# HELP knative_dev_eventing_controller_reconcile_latency_milliseconds Latency of reconcile operations
+# HELP knative_dev_eventing_controller_work_queue_depth_ratio Depth of the work queue
+# HELP knative_dev_eventing_controller_workqueue_adds_total Total number of adds handled by workqueue
+# HELP knative_dev_eventing_controller_workqueue_depth_ratio Current depth of workqueue
+# HELP knative_dev_eventing_controller_workqueue_longest_running_processor_seconds How long in seconds the longest outstanding workqueue item has been in flight.
+# HELP knative_dev_eventing_controller_workqueue_queue_latency_seconds How long in seconds an item stays in workqueue before being requested.
+# HELP knative_dev_eventing_controller_workqueue_unfinished_work_seconds How long in seconds the outstanding workqueue items have been in flight (total).
+# HELP knative_dev_eventing_controller_workqueue_work_duration_seconds How long in seconds processing an item from workqueue takes.
+# HELP knative_dev_eventing_eventing_webhook_client_latency_seconds How long Kubernetes API requests take
+# HELP knative_dev_eventing_eventing_webhook_client_results_total Total number of API requests (broken down by status code)
+# HELP knative_dev_eventing_eventing_webhook_go_alloc_ratio The number of bytes of allocated heap objects.
+# HELP knative_dev_eventing_eventing_webhook_go_bucket_hash_sys_ratio The number of bytes of memory in profiling bucket hash tables.
+# HELP knative_dev_eventing_eventing_webhook_go_frees_ratio The cumulative count of heap objects freed.
+# HELP knative_dev_eventing_eventing_webhook_go_gc_cpu_fraction_ratio The fraction of this program's available CPU time used by the GC since the program started.
+# HELP knative_dev_eventing_eventing_webhook_go_gc_sys_ratio The number of bytes of memory in garbage collection metadata.
+# HELP knative_dev_eventing_eventing_webhook_go_heap_alloc_ratio The number of bytes of allocated heap objects.
+# HELP knative_dev_eventing_eventing_webhook_go_heap_idle_ratio The number of bytes in idle (unused) spans.
+# HELP knative_dev_eventing_eventing_webhook_go_heap_in_use_ratio The number of bytes in in-use spans.
+# HELP knative_dev_eventing_eventing_webhook_go_heap_objects_ratio The number of allocated heap objects.
+# HELP knative_dev_eventing_eventing_webhook_go_heap_released_ratio The number of bytes of physical memory returned to the OS.
+# HELP knative_dev_eventing_eventing_webhook_go_heap_sys_ratio The number of bytes of heap memory obtained from the OS.
+# HELP knative_dev_eventing_eventing_webhook_go_last_gc_nanoseconds The time the last garbage collection finished, as nanoseconds since 1970 (the UNIX epoch).
+# HELP knative_dev_eventing_eventing_webhook_go_lookups_ratio The number of pointer lookups performed by the runtime.
+# HELP knative_dev_eventing_eventing_webhook_go_mallocs_ratio The cumulative count of heap objects allocated.
+# HELP knative_dev_eventing_eventing_webhook_go_mcache_in_use_ratio The number of bytes of allocated mcache structures.
+# HELP knative_dev_eventing_eventing_webhook_go_mcache_sys_ratio The number of bytes of memory obtained from the OS for mcache structures.
+# HELP knative_dev_eventing_eventing_webhook_go_mspan_in_use_ratio The number of bytes of allocated mspan structures.
+# HELP knative_dev_eventing_eventing_webhook_go_mspan_sys_ratio The number of bytes of memory obtained from the OS for mspan structures.
+# HELP knative_dev_eventing_eventing_webhook_go_next_gc_ratio The target heap size of the next GC cycle.
+# HELP knative_dev_eventing_eventing_webhook_go_num_forced_gc_ratio The number of GC cycles that were forced by the application calling the GC function.
+# HELP knative_dev_eventing_eventing_webhook_go_num_gc_ratio The number of completed GC cycles.
+# HELP knative_dev_eventing_eventing_webhook_go_other_sys_ratio The number of bytes of memory in miscellaneous off-heap runtime allocations.
+# HELP knative_dev_eventing_eventing_webhook_go_stack_in_use_ratio The number of bytes in stack spans.
+# HELP knative_dev_eventing_eventing_webhook_go_stack_sys_ratio The number of bytes of stack memory obtained from the OS.
+# HELP knative_dev_eventing_eventing_webhook_go_sys_ratio The total bytes of memory obtained from the OS.
+# HELP knative_dev_eventing_eventing_webhook_go_total_alloc_ratio The cumulative bytes allocated for heap objects.
+# HELP knative_dev_eventing_eventing_webhook_go_total_gc_pause_ns_nanoseconds The cumulative nanoseconds in GC stop-the-world pauses since the program started.
+# HELP knative_dev_eventing_eventing_webhook_reconcile_count_total Number of reconcile operations
+# HELP knative_dev_eventing_eventing_webhook_reconcile_latency_milliseconds Latency of reconcile operations
+# HELP knative_dev_eventing_eventing_webhook_request_count_total The number of requests that are routed to webhook
+# HELP knative_dev_eventing_eventing_webhook_request_latencies_milliseconds The response time in milliseconds
+# HELP knative_dev_eventing_eventing_webhook_work_queue_depth_ratio Depth of the work queue
+# HELP knative_dev_eventing_eventing_webhook_workqueue_adds_total Total number of adds handled by workqueue
+# HELP knative_dev_eventing_eventing_webhook_workqueue_depth_ratio Current depth of workqueue
+# HELP knative_dev_eventing_eventing_webhook_workqueue_longest_running_processor_seconds How long in seconds the longest outstanding workqueue item has been in flight.
+# HELP knative_dev_eventing_eventing_webhook_workqueue_queue_latency_seconds How long in seconds an item stays in workqueue before being requested.
+# HELP knative_dev_eventing_eventing_webhook_workqueue_retries_total Total number of retries handled by workqueue
+# HELP knative_dev_eventing_eventing_webhook_workqueue_unfinished_work_seconds How long in seconds the outstanding workqueue items have been in flight (total).
+# HELP knative_dev_eventing_eventing_webhook_workqueue_work_duration_seconds How long in seconds processing an item from workqueue takes.
+# HELP knative_dev_internal_eventing_job_sink_client_latency_seconds How long Kubernetes API requests take
+# HELP knative_dev_internal_eventing_job_sink_client_results_total Total number of API requests (broken down by status code)
+# HELP knative_dev_internal_serving_activator_client_results_total Total number of API requests (broken down by status code)
+# HELP knative_dev_internal_serving_activator_go_alloc_ratio The number of bytes of allocated heap objects.
+# HELP knative_dev_internal_serving_activator_go_bucket_hash_sys_ratio The number of bytes of memory in profiling bucket hash tables.
+# HELP knative_dev_internal_serving_activator_go_frees_ratio The cumulative count of heap objects freed.
+# HELP knative_dev_internal_serving_activator_go_gc_cpu_fraction_ratio The fraction of this program's available CPU time used by the GC since the program started.
+# HELP knative_dev_internal_serving_activator_go_gc_sys_ratio The number of bytes of memory in garbage collection metadata.
+# HELP knative_dev_internal_serving_activator_go_heap_alloc_ratio The number of bytes of allocated heap objects.
+# HELP knative_dev_internal_serving_activator_go_heap_idle_ratio The number of bytes in idle (unused) spans.
+# HELP knative_dev_internal_serving_activator_go_heap_in_use_ratio The number of bytes in in-use spans.
+# HELP knative_dev_internal_serving_activator_go_heap_objects_ratio The number of allocated heap objects.
+# HELP knative_dev_internal_serving_activator_go_heap_released_ratio The number of bytes of physical memory returned to the OS.
+# HELP knative_dev_internal_serving_activator_go_heap_sys_ratio The number of bytes of heap memory obtained from the OS.
+# HELP knative_dev_internal_serving_activator_go_last_gc_nanoseconds The time the last garbage collection finished, as nanoseconds since 1970 (the UNIX epoch).
+# HELP knative_dev_internal_serving_activator_go_lookups_ratio The number of pointer lookups performed by the runtime.
+# HELP knative_dev_internal_serving_activator_go_mallocs_ratio The cumulative count of heap objects allocated.
+# HELP knative_dev_internal_serving_activator_go_mcache_in_use_ratio The number of bytes of allocated mcache structures.
+# HELP knative_dev_internal_serving_activator_go_mcache_sys_ratio The number of bytes of memory obtained from the OS for mcache structures.
+# HELP knative_dev_internal_serving_activator_go_mspan_in_use_ratio The number of bytes of allocated mspan structures.
+# HELP knative_dev_internal_serving_activator_go_mspan_sys_ratio The number of bytes of memory obtained from the OS for mspan structures.
+# HELP knative_dev_internal_serving_activator_go_next_gc_ratio The target heap size of the next GC cycle.
+# HELP knative_dev_internal_serving_activator_go_num_forced_gc_ratio The number of GC cycles that were forced by the application calling the GC function.
+# HELP knative_dev_internal_serving_activator_go_num_gc_ratio The number of completed GC cycles.
+# HELP knative_dev_internal_serving_activator_go_other_sys_ratio The number of bytes of memory in miscellaneous off-heap runtime allocations.
+# HELP knative_dev_internal_serving_activator_go_stack_in_use_ratio The number of bytes in stack spans.
+# HELP knative_dev_internal_serving_activator_go_stack_sys_ratio The number of bytes of stack memory obtained from the OS.
+# HELP knative_dev_internal_serving_activator_go_sys_ratio The total bytes of memory obtained from the OS.
+# HELP knative_dev_internal_serving_activator_go_total_alloc_ratio The cumulative bytes allocated for heap objects.
+# HELP knative_dev_internal_serving_activator_go_total_gc_pause_ns_nanoseconds The cumulative nanoseconds in GC stop-the-world pauses since the program started.
+# HELP knative_dev_internal_serving_activator_request_count_total The number of requests that are routed to Activator
+# HELP knative_dev_internal_serving_activator_request_latencies_milliseconds The response time in millisecond
+# HELP knative_dev_internal_serving_controller_client_latency_seconds How long Kubernetes API requests take
+# HELP knative_dev_internal_serving_controller_client_results_total Total number of API requests (broken down by status code)
+# HELP knative_dev_internal_serving_controller_go_alloc_ratio The number of bytes of allocated heap objects.
+# HELP knative_dev_internal_serving_controller_go_bucket_hash_sys_ratio The number of bytes of memory in profiling bucket hash tables.
+# HELP knative_dev_internal_serving_controller_go_frees_ratio The cumulative count of heap objects freed.
+# HELP knative_dev_internal_serving_controller_go_gc_cpu_fraction_ratio The fraction of this program's available CPU time used by the GC since the program started.
+# HELP knative_dev_internal_serving_controller_go_gc_sys_ratio The number of bytes of memory in garbage collection metadata.
+# HELP knative_dev_internal_serving_controller_go_heap_alloc_ratio The number of bytes of allocated heap objects.
+# HELP knative_dev_internal_serving_controller_go_heap_idle_ratio The number of bytes in idle (unused) spans.
+# HELP knative_dev_internal_serving_controller_go_heap_in_use_ratio The number of bytes in in-use spans.
+# HELP knative_dev_internal_serving_controller_go_heap_objects_ratio The number of allocated heap objects.
+# HELP knative_dev_internal_serving_controller_go_heap_released_ratio The number of bytes of physical memory returned to the OS.
+# HELP knative_dev_internal_serving_controller_go_heap_sys_ratio The number of bytes of heap memory obtained from the OS.
+# HELP knative_dev_internal_serving_controller_go_last_gc_nanoseconds The time the last garbage collection finished, as nanoseconds since 1970 (the UNIX epoch).
+# HELP knative_dev_internal_serving_controller_go_lookups_ratio The number of pointer lookups performed by the runtime.
+# HELP knative_dev_internal_serving_controller_go_mallocs_ratio The cumulative count of heap objects allocated.
+# HELP knative_dev_internal_serving_controller_go_mcache_in_use_ratio The number of bytes of allocated mcache structures.
+# HELP knative_dev_internal_serving_controller_go_mcache_sys_ratio The number of bytes of memory obtained from the OS for mcache structures.
+# HELP knative_dev_internal_serving_controller_go_mspan_in_use_ratio The number of bytes of allocated mspan structures.
+# HELP knative_dev_internal_serving_controller_go_mspan_sys_ratio The number of bytes of memory obtained from the OS for mspan structures.
+# HELP knative_dev_internal_serving_controller_go_next_gc_ratio The target heap size of the next GC cycle.
+# HELP knative_dev_internal_serving_controller_go_num_forced_gc_ratio The number of GC cycles that were forced by the application calling the GC function.
+# HELP knative_dev_internal_serving_controller_go_num_gc_ratio The number of completed GC cycles.
+# HELP knative_dev_internal_serving_controller_go_other_sys_ratio The number of bytes of memory in miscellaneous off-heap runtime allocations.
+# HELP knative_dev_internal_serving_controller_go_stack_in_use_ratio The number of bytes in stack spans.
+# HELP knative_dev_internal_serving_controller_go_stack_sys_ratio The number of bytes of stack memory obtained from the OS.
+# HELP knative_dev_internal_serving_controller_go_sys_ratio The total bytes of memory obtained from the OS.
+# HELP knative_dev_internal_serving_controller_go_total_alloc_ratio The cumulative bytes allocated for heap objects.
+# HELP knative_dev_internal_serving_controller_go_total_gc_pause_ns_nanoseconds The cumulative nanoseconds in GC stop-the-world pauses since the program started.
+# HELP knative_dev_internal_serving_controller_reconcile_count_total Number of reconcile operations
+# HELP knative_dev_internal_serving_controller_reconcile_latency_milliseconds Latency of reconcile operations
+# HELP knative_dev_internal_serving_controller_work_queue_depth_ratio Depth of the work queue
+# HELP knative_dev_internal_serving_controller_workqueue_adds_total Total number of adds handled by workqueue
+# HELP knative_dev_internal_serving_controller_workqueue_depth_ratio Current depth of workqueue
+# HELP knative_dev_internal_serving_controller_workqueue_longest_running_processor_seconds How long in seconds the longest outstanding workqueue item has been in flight.
+# HELP knative_dev_internal_serving_controller_workqueue_queue_latency_seconds How long in seconds an item stays in workqueue before being requested.
+# HELP knative_dev_internal_serving_controller_workqueue_retries_total Total number of retries handled by workqueue
+# HELP knative_dev_internal_serving_controller_workqueue_unfinished_work_seconds How long in seconds the outstanding workqueue items have been in flight (total).
+# HELP knative_dev_internal_serving_controller_workqueue_work_duration_seconds How long in seconds processing an item from workqueue takes.
+# HELP knative_dev_internal_serving_webhook_client_latency_seconds How long Kubernetes API requests take
+# HELP knative_dev_internal_serving_webhook_client_results_total Total number of API requests (broken down by status code)
+# HELP knative_dev_internal_serving_webhook_go_alloc_ratio The number of bytes of allocated heap objects.
+# HELP knative_dev_internal_serving_webhook_go_bucket_hash_sys_ratio The number of bytes of memory in profiling bucket hash tables.
+# HELP knative_dev_internal_serving_webhook_go_frees_ratio The cumulative count of heap objects freed.
+# HELP knative_dev_internal_serving_webhook_go_gc_cpu_fraction_ratio The fraction of this program's available CPU time used by the GC since the program started.
+# HELP knative_dev_internal_serving_webhook_go_gc_sys_ratio The number of bytes of memory in garbage collection metadata.
+# HELP knative_dev_internal_serving_webhook_go_heap_alloc_ratio The number of bytes of allocated heap objects.
+# HELP knative_dev_internal_serving_webhook_go_heap_idle_ratio The number of bytes in idle (unused) spans.
+# HELP knative_dev_internal_serving_webhook_go_heap_in_use_ratio The number of bytes in in-use spans.
+# HELP knative_dev_internal_serving_webhook_go_heap_objects_ratio The number of allocated heap objects.
+# HELP knative_dev_internal_serving_webhook_go_heap_released_ratio The number of bytes of physical memory returned to the OS.
+# HELP knative_dev_internal_serving_webhook_go_heap_sys_ratio The number of bytes of heap memory obtained from the OS.
+# HELP knative_dev_internal_serving_webhook_go_last_gc_nanoseconds The time the last garbage collection finished, as nanoseconds since 1970 (the UNIX epoch).
+# HELP knative_dev_internal_serving_webhook_go_lookups_ratio The number of pointer lookups performed by the runtime.
+# HELP knative_dev_internal_serving_webhook_go_mallocs_ratio The cumulative count of heap objects allocated.
+# HELP knative_dev_internal_serving_webhook_go_mcache_in_use_ratio The number of bytes of allocated mcache structures.
+# HELP knative_dev_internal_serving_webhook_go_mcache_sys_ratio The number of bytes of memory obtained from the OS for mcache structures.
+# HELP knative_dev_internal_serving_webhook_go_mspan_in_use_ratio The number of bytes of allocated mspan structures.
+# HELP knative_dev_internal_serving_webhook_go_mspan_sys_ratio The number of bytes of memory obtained from the OS for mspan structures.
+# HELP knative_dev_internal_serving_webhook_go_next_gc_ratio The target heap size of the next GC cycle.
+# HELP knative_dev_internal_serving_webhook_go_num_forced_gc_ratio The number of GC cycles that were forced by the application calling the GC function.
+# HELP knative_dev_internal_serving_webhook_go_num_gc_ratio The number of completed GC cycles.
+# HELP knative_dev_internal_serving_webhook_go_other_sys_ratio The number of bytes of memory in miscellaneous off-heap runtime allocations.
+# HELP knative_dev_internal_serving_webhook_go_stack_in_use_ratio The number of bytes in stack spans.
+# HELP knative_dev_internal_serving_webhook_go_stack_sys_ratio The number of bytes of stack memory obtained from the OS.
+# HELP knative_dev_internal_serving_webhook_go_sys_ratio The total bytes of memory obtained from the OS.
+# HELP knative_dev_internal_serving_webhook_go_total_alloc_ratio The cumulative bytes allocated for heap objects.
+# HELP knative_dev_internal_serving_webhook_go_total_gc_pause_ns_nanoseconds The cumulative nanoseconds in GC stop-the-world pauses since the program started.
+# HELP knative_dev_internal_serving_webhook_reconcile_count_total Number of reconcile operations
+# HELP knative_dev_internal_serving_webhook_reconcile_latency_milliseconds Latency of reconcile operations
+# HELP knative_dev_internal_serving_webhook_request_count_total The number of requests that are routed to webhook
+# HELP knative_dev_internal_serving_webhook_request_latencies_milliseconds The response time in milliseconds
+# HELP knative_dev_internal_serving_webhook_work_queue_depth_ratio Depth of the work queue
+# HELP knative_dev_internal_serving_webhook_workqueue_adds_total Total number of adds handled by workqueue
+# HELP knative_dev_internal_serving_webhook_workqueue_depth_ratio Current depth of workqueue
+# HELP knative_dev_internal_serving_webhook_workqueue_longest_running_processor_seconds How long in seconds the longest outstanding workqueue item has been in flight.
+# HELP knative_dev_internal_serving_webhook_workqueue_queue_latency_seconds How long in seconds an item stays in workqueue before being requested.
+# HELP knative_dev_internal_serving_webhook_workqueue_retries_total Total number of retries handled by workqueue
+# HELP knative_dev_internal_serving_webhook_workqueue_unfinished_work_seconds How long in seconds the outstanding workqueue items have been in flight (total).
+# HELP knative_dev_internal_serving_webhook_workqueue_work_duration_seconds How long in seconds processing an item from workqueue takes.
+# HELP knative_dev_samples_net_kourier_controller_client_latency_seconds How long Kubernetes API requests take
+# HELP knative_dev_samples_net_kourier_controller_client_results_total Total number of API requests (broken down by status code)
+# HELP knative_dev_samples_net_kourier_controller_go_alloc_ratio The number of bytes of allocated heap objects.
+# HELP knative_dev_samples_net_kourier_controller_go_bucket_hash_sys_ratio The number of bytes of memory in profiling bucket hash tables.
+# HELP knative_dev_samples_net_kourier_controller_go_frees_ratio The cumulative count of heap objects freed.
+# HELP knative_dev_samples_net_kourier_controller_go_gc_cpu_fraction_ratio The fraction of this program's available CPU time used by the GC since the program started.
+# HELP knative_dev_samples_net_kourier_controller_go_gc_sys_ratio The number of bytes of memory in garbage collection metadata.
+# HELP knative_dev_samples_net_kourier_controller_go_heap_alloc_ratio The number of bytes of allocated heap objects.
+# HELP knative_dev_samples_net_kourier_controller_go_heap_idle_ratio The number of bytes in idle (unused) spans.
+# HELP knative_dev_samples_net_kourier_controller_go_heap_in_use_ratio The number of bytes in in-use spans.
+# HELP knative_dev_samples_net_kourier_controller_go_heap_objects_ratio The number of allocated heap objects.
+# HELP knative_dev_samples_net_kourier_controller_go_heap_released_ratio The number of bytes of physical memory returned to the OS.
+# HELP knative_dev_samples_net_kourier_controller_go_heap_sys_ratio The number of bytes of heap memory obtained from the OS.
+# HELP knative_dev_samples_net_kourier_controller_go_last_gc_nanoseconds The time the last garbage collection finished, as nanoseconds since 1970 (the UNIX epoch).
+# HELP knative_dev_samples_net_kourier_controller_go_lookups_ratio The number of pointer lookups performed by the runtime.
+# HELP knative_dev_samples_net_kourier_controller_go_mallocs_ratio The cumulative count of heap objects allocated.
+# HELP knative_dev_samples_net_kourier_controller_go_mcache_in_use_ratio The number of bytes of allocated mcache structures.
+# HELP knative_dev_samples_net_kourier_controller_go_mcache_sys_ratio The number of bytes of memory obtained from the OS for mcache structures.
+# HELP knative_dev_samples_net_kourier_controller_go_mspan_in_use_ratio The number of bytes of allocated mspan structures.
+# HELP knative_dev_samples_net_kourier_controller_go_mspan_sys_ratio The number of bytes of memory obtained from the OS for mspan structures.
+# HELP knative_dev_samples_net_kourier_controller_go_next_gc_ratio The target heap size of the next GC cycle.
+# HELP knative_dev_samples_net_kourier_controller_go_num_forced_gc_ratio The number of GC cycles that were forced by the application calling the GC function.
+# HELP knative_dev_samples_net_kourier_controller_go_num_gc_ratio The number of completed GC cycles.
+# HELP knative_dev_samples_net_kourier_controller_go_other_sys_ratio The number of bytes of memory in miscellaneous off-heap runtime allocations.
+# HELP knative_dev_samples_net_kourier_controller_go_stack_in_use_ratio The number of bytes in stack spans.
+# HELP knative_dev_samples_net_kourier_controller_go_stack_sys_ratio The number of bytes of stack memory obtained from the OS.
+# HELP knative_dev_samples_net_kourier_controller_go_sys_ratio The total bytes of memory obtained from the OS.
+# HELP knative_dev_samples_net_kourier_controller_go_total_alloc_ratio The cumulative bytes allocated for heap objects.
+# HELP knative_dev_samples_net_kourier_controller_go_total_gc_pause_ns_nanoseconds The cumulative nanoseconds in GC stop-the-world pauses since the program started.
+# HELP knative_dev_samples_net_kourier_controller_reconcile_count_total Number of reconcile operations
+# HELP knative_dev_samples_net_kourier_controller_reconcile_latency_milliseconds Latency of reconcile operations
+# HELP knative_dev_samples_net_kourier_controller_work_queue_depth_ratio Depth of the work queue
+# HELP knative_dev_samples_net_kourier_controller_workqueue_adds_total Total number of adds handled by workqueue
+# HELP knative_dev_samples_net_kourier_controller_workqueue_depth_ratio Current depth of workqueue
+# HELP knative_dev_samples_net_kourier_controller_workqueue_longest_running_processor_seconds How long in seconds the longest outstanding workqueue item has been in flight.
+# HELP knative_dev_samples_net_kourier_controller_workqueue_queue_latency_seconds How long in seconds an item stays in workqueue before being requested.
+# HELP knative_dev_samples_net_kourier_controller_workqueue_retries_total Total number of retries handled by workqueue
+# HELP knative_dev_samples_net_kourier_controller_workqueue_unfinished_work_seconds How long in seconds the outstanding workqueue items have been in flight (total).
+# HELP knative_dev_samples_net_kourier_controller_workqueue_work_duration_seconds How long in seconds processing an item from workqueue takes.
+# HELP knative_dev_serving_autoscaler_actual_pods_ratio Number of pods that are allocated currently
+# HELP knative_dev_serving_autoscaler_client_latency_seconds How long Kubernetes API requests take
+# HELP knative_dev_serving_autoscaler_client_results_total Total number of API requests (broken down by status code)
+# HELP knative_dev_serving_autoscaler_go_alloc_ratio The number of bytes of allocated heap objects.
+# HELP knative_dev_serving_autoscaler_go_bucket_hash_sys_ratio The number of bytes of memory in profiling bucket hash tables.
+# HELP knative_dev_serving_autoscaler_go_frees_ratio The cumulative count of heap objects freed.
+# HELP knative_dev_serving_autoscaler_go_gc_cpu_fraction_ratio The fraction of this program's available CPU time used by the GC since the program started.
+# HELP knative_dev_serving_autoscaler_go_gc_sys_ratio The number of bytes of memory in garbage collection metadata.
+# HELP knative_dev_serving_autoscaler_go_heap_alloc_ratio The number of bytes of allocated heap objects.
+# HELP knative_dev_serving_autoscaler_go_heap_idle_ratio The number of bytes in idle (unused) spans.
+# HELP knative_dev_serving_autoscaler_go_heap_in_use_ratio The number of bytes in in-use spans.
+# HELP knative_dev_serving_autoscaler_go_heap_objects_ratio The number of allocated heap objects.
+# HELP knative_dev_serving_autoscaler_go_heap_released_ratio The number of bytes of physical memory returned to the OS.
+# HELP knative_dev_serving_autoscaler_go_heap_sys_ratio The number of bytes of heap memory obtained from the OS.
+# HELP knative_dev_serving_autoscaler_go_last_gc_nanoseconds The time the last garbage collection finished, as nanoseconds since 1970 (the UNIX epoch).
+# HELP knative_dev_serving_autoscaler_go_lookups_ratio The number of pointer lookups performed by the runtime.
+# HELP knative_dev_serving_autoscaler_go_mallocs_ratio The cumulative count of heap objects allocated.
+# HELP knative_dev_serving_autoscaler_go_mcache_in_use_ratio The number of bytes of allocated mcache structures.
+# HELP knative_dev_serving_autoscaler_go_mcache_sys_ratio The number of bytes of memory obtained from the OS for mcache structures.
+# HELP knative_dev_serving_autoscaler_go_mspan_in_use_ratio The number of bytes of allocated mspan structures.
+# HELP knative_dev_serving_autoscaler_go_mspan_sys_ratio The number of bytes of memory obtained from the OS for mspan structures.
+# HELP knative_dev_serving_autoscaler_go_next_gc_ratio The target heap size of the next GC cycle.
+# HELP knative_dev_serving_autoscaler_go_num_forced_gc_ratio The number of GC cycles that were forced by the application calling the GC function.
+# HELP knative_dev_serving_autoscaler_go_num_gc_ratio The number of completed GC cycles.
+# HELP knative_dev_serving_autoscaler_go_other_sys_ratio The number of bytes of memory in miscellaneous off-heap runtime allocations.
+# HELP knative_dev_serving_autoscaler_go_stack_in_use_ratio The number of bytes in stack spans.
+# HELP knative_dev_serving_autoscaler_go_stack_sys_ratio The number of bytes of stack memory obtained from the OS.
+# HELP knative_dev_serving_autoscaler_go_sys_ratio The total bytes of memory obtained from the OS.
+# HELP knative_dev_serving_autoscaler_go_total_alloc_ratio The cumulative bytes allocated for heap objects.
+# HELP knative_dev_serving_autoscaler_go_total_gc_pause_ns_nanoseconds The cumulative nanoseconds in GC stop-the-world pauses since the program started.
+# HELP knative_dev_serving_autoscaler_not_ready_pods_ratio Number of pods that are not ready currently
+# HELP knative_dev_serving_autoscaler_panic_mode_ratio 1 if autoscaler is in panic mode, 0 otherwise
+# HELP knative_dev_serving_autoscaler_pending_pods_ratio Number of pods that are pending currently
+# HELP knative_dev_serving_autoscaler_reconcile_count_total Number of reconcile operations
+# HELP knative_dev_serving_autoscaler_reconcile_latency_milliseconds Latency of reconcile operations
+# HELP knative_dev_serving_autoscaler_scrape_time_milliseconds The time to scrape metrics in milliseconds
+# HELP knative_dev_serving_autoscaler_terminating_pods_ratio Number of pods that are terminating currently
+# HELP knative_dev_serving_autoscaler_work_queue_depth_ratio Depth of the work queue
+# HELP knative_dev_serving_autoscaler_workqueue_adds_total Total number of adds handled by workqueue
+# HELP knative_dev_serving_autoscaler_workqueue_depth_ratio Current depth of workqueue
+# HELP knative_dev_serving_autoscaler_workqueue_longest_running_processor_seconds How long in seconds the longest outstanding workqueue item has been in flight.
+# HELP knative_dev_serving_autoscaler_workqueue_queue_latency_seconds How long in seconds an item stays in workqueue before being requested.
+# HELP knative_dev_serving_autoscaler_workqueue_retries_total Total number of retries handled by workqueue
+# HELP knative_dev_serving_autoscaler_workqueue_unfinished_work_seconds How long in seconds the outstanding workqueue items have been in flight (total).
+# HELP knative_dev_serving_autoscaler_workqueue_work_duration_seconds How long in seconds processing an item from workqueue takes.

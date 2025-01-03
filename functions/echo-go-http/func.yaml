@@ -1,0 +1,11 @@
+specVersion: 0.36.0
+name: echo-go-http
+runtime: go
+image: docker.io/luccadibenedetto/echo-go-http:latest
+namespace: functions
+created: 2025-01-01T15:43:06.740168629+01:00
+build:
+  builder: pack
+deploy:
+  namespace: functions
+  image: docker.io/luccadibenedetto/echo-go-http@sha256:8b84839cca4c090a38c2667f1edebfbb66d8a8da8d9288f1f0934eb2455f2800
