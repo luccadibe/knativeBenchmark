@@ -263,3 +263,32 @@ The ContainerSource instantiates container image(s) that can generate events unt
 https://knative.dev/docs/eventing/custom-event-source/containersource/
 
 
+- test the metrics collector -> done , works fine
+
+- test the knative sequence of functions that process the event. -> done , works fine
+
+- make the deployer able to deploy a sequence of functions that process the event. -> done , works fin
+     - for this we need the image !
+
+go run deployer/main.go --action=sequence --image=go-handler-event --name=event-handler
+
+2m29s (x16 over 5m13s)   Warning   TrackerFailed                       Sequence/sequence                               unable to track changes to channel {Kind:InMemoryChannel Namespace:default Name:sequence-kn-sequence-0 UID: APIVersion:messaging.knative.dev/v1 ResourceVersion: FieldPath:} : inmemorychannels.messaging.knative.dev is forbidden: User "system:serviceaccount:knative-eventing:eventing-controller" cannot list resource "inmemorychannels" in API group "messaging.knative.dev" at the cluster scope
+2m17s (x16 over 4m51s)   Warning   InternalError                       SinkBinding/event-source-sinkbinding            URL missing in address of Kind = Sequence, Namespace = default, Name = sequence, APIVersion = flows.knative.dev/v1, Group = , Address =
+
+
+func deploy --image=docker.io/luccadibenedetto/go-handler-event:latest --build=true --namespace=functions
+
+current setup worked for 10 req / s for 1 min. to the sequece:
+time=2025-01-08T17:07:38.035Z level=INFO msg=Success target=http://sequence-kn-sequence-0-kn-channel.functions.svc.cluster.local latency=61.911697ms status=202
+
+I saved the logs in home/random
+initial implementation of node and container metrics is working in analysis/2.py
+todo:
+- add cpu and memory in % over total memory and cpu . keep in mind that this depends on the VM size.
+- add prometheus metrics - what is happening with each knative component?
+- finish up eventing benchark. simple scenario broker / trigger .
+- make more preliminary tests with the function sequence, see what is the limit, I suspect  its the inmemorychannel.
+
+- start a rough draft of the report.
+just eventing -> deployes the sequence and the workload generator container source.
+just destroy-eventing -> destroys the sequence and the workload generator container source.

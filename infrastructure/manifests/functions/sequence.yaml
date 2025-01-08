@@ -1,0 +1,60 @@
+apiVersion: flows.knative.dev/v1
+kind: Sequence
+metadata:
+  name: sequence
+  namespace: functions
+spec:
+  channelTemplate:
+    apiVersion: messaging.knative.dev/v1
+    kind: InMemoryChannel
+  steps:
+    - ref:
+        apiVersion: serving.knative.dev/v1
+        kind: Service
+        name: event-handler-1
+        namespace: functions
+    - ref:
+        apiVersion: serving.knative.dev/v1
+        kind: Service
+        name: event-handler-2
+        namespace: functions
+    - ref:
+        apiVersion: serving.knative.dev/v1
+        kind: Service
+        name: event-handler-3
+        namespace: functions
+    - ref:
+        apiVersion: serving.knative.dev/v1
+        kind: Service
+        name: event-handler-4
+        namespace: functions
+    - ref:
+        apiVersion: serving.knative.dev/v1
+        kind: Service
+        name: event-handler-5
+        namespace: functions
+    - ref:
+        apiVersion: serving.knative.dev/v1
+        kind: Service
+        name: event-handler-6
+        namespace: functions
+    - ref:
+        apiVersion: serving.knative.dev/v1
+        kind: Service
+        name: event-handler-7
+        namespace: functions
+    - ref:
+        apiVersion: serving.knative.dev/v1
+        kind: Service
+        name: event-handler-8
+        namespace: functions
+    - ref:
+        apiVersion: serving.knative.dev/v1
+        kind: Service
+        name: event-handler-9
+        namespace: functions
+    - ref:
+        apiVersion: serving.knative.dev/v1
+        kind: Service
+        name: event-handler-10
+        namespace: functions

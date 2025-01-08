@@ -1,18 +1,22 @@
 package connection
 
 import (
+	"context"
 	"io"
 	"net/http"
 	"strings"
 	"sync"
 	"time"
 
+	cloudevents "github.com/cloudevents/sdk-go/v2"
+	cehttp "github.com/cloudevents/sdk-go/v2/protocol/http"
 	"github.com/luccadibe/knativeBenchmark/pkg/config"
 )
 
 type Pool interface {
 	Get(target *config.Target) (*http.Response, error)
 	Post(target *config.Target, body io.Reader) (*http.Response, error)
+	GenerateCloudEvent(target *config.Target, event *cloudevents.Event) (*http.Response, error)
 	Targets() map[*config.Target]int
 }
 
@@ -85,6 +89,14 @@ func (p *pool) Post(target *config.Target, body io.Reader) (*http.Response, erro
 	return p.client.Do(req)
 }
 
+func (p *pool) GenerateCloudEvent(target *config.Target, event *cloudevents.Event) (*http.Response, error) {
+	req, err := cehttp.NewHTTPRequestFromEvent(context.Background(), target.URL, *event)
+	if err != nil {
+		return nil, err
+	}
+	return p.client.Do(req)
+}
+
 func (p *pool) Targets() map[*config.Target]int {
 	return p.targets
 }
@@ -92,6 +104,19 @@ func (p *pool) Targets() map[*config.Target]int {
 type poolMock struct {
 	targets map[*config.Target]int
 	mu      sync.Mutex
+}
+
+// GenerateCloudEvent implements Pool.
+func (p *poolMock) GenerateCloudEvent(target *config.Target, event *cloudevents.Event) (*http.Response, error) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.targets[target]++
+	mockResponse := &http.Response{
+		StatusCode: http.StatusOK,
+		// This is because we need to call Close() on the body in the generator
+		Body: io.NopCloser(strings.NewReader("")),
+	}
+	return mockResponse, nil
 }
 
 func (p *poolMock) Get(target *config.Target) (*http.Response, error) {

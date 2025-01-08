@@ -1,7 +1,6 @@
 package generator
 
 import (
-	"bytes"
 	"context"
 	"io"
 	"log/slog"
@@ -196,10 +195,13 @@ func (c *cloudEventGenerator) Stop() {
 }
 
 func NewCloudEventGenerator(cfg *config.Config, event *cloudevents.Event, pool connection.Pool, logger *slog.Logger) Generator {
+	ctx, cancel := context.WithCancel(context.Background())
 	return &cloudEventGenerator{
 		cfg:    cfg,
 		event:  event,
 		Pool:   pool,
+		ctx:    ctx,
+		cancel: cancel,
 		logger: logger,
 	}
 }
@@ -213,8 +215,9 @@ func (c *cloudEventGenerator) run() error {
 	c.logger.Info("Calculated ticker interval", "interval", interval)
 
 	ticker := time.NewTicker(interval)
-	//startTime := time.Now()
+	startTime := time.Now()
 	requestCount := 0
+	target := c.cfg.Targets[0]
 
 	for {
 		select {
@@ -223,11 +226,24 @@ func (c *cloudEventGenerator) run() error {
 			return nil
 		case <-ticker.C:
 			c.wg.Add(1)
-			go func() {
+			go func(target *config.Target) {
 				defer c.wg.Done()
-				//TODO
-				c.Pool.Post(c.cfg.Targets[0], bytes.NewReader(c.event.Data()))
-			}()
+				start := time.Now()
+				resp, err := c.Pool.GenerateCloudEvent(target, c.event)
+				if err != nil {
+					c.logger.Error("Request error", "target", target.URL, "error", err)
+					return
+				}
+				duration := time.Since(start)
+				c.logger.Info("Success", "target", target.URL, "latency", duration, "status", resp.StatusCode)
+				requestCount++
+			}(target)
+		}
+		if c.cfg.Rate.Duration.Duration > 0 && time.Since(startTime) > c.cfg.Rate.Duration.Duration {
+			c.logger.Info("Duration reached", "duration", c.cfg.Rate.Duration.Duration)
+			c.Stop()
+			return nil
 		}
 	}
+
 }

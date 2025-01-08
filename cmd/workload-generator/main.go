@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"os"
 
+	cloudevents "github.com/cloudevents/sdk-go/v2"
 	"github.com/luccadibe/knativeBenchmark/pkg/config"
 	"github.com/luccadibe/knativeBenchmark/pkg/connection"
 	"github.com/luccadibe/knativeBenchmark/pkg/generator"
@@ -16,6 +17,7 @@ func main() {
 	configPath := flag.String("config", "config.yaml", "path to config file")
 	pingEndpoints := flag.Bool("ping", false, "ping endpoints")
 	devMode := flag.Bool("dev", false, "development mode - use localhost:8080")
+	cloudEventMode := flag.Bool("event", false, "cloud event mode - generate cloud events")
 	flag.Parse()
 
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
@@ -37,14 +39,42 @@ func main() {
 		ping(cfg, logger, pool)
 	}
 
-	gen := generator.New(cfg, logger, pool)
-	logger.Info("Generator initialized")
+	if *cloudEventMode {
+		// get K_SINK from env
+		logger.Info("K_SINK", "K_SINK", os.Getenv("K_SINK"))
 
-	err = gen.Start()
-	if err != nil {
-		logger.Error("Generator failed", "error", err)
+		kSink := os.Getenv("K_SINK")
+		if kSink == "" {
+			logger.Error("K_SINK is not set")
+			os.Exit(1)
+		}
+		cfg.Targets[0].URL = kSink
+
+		event := cloudevents.NewEvent()
+		event.SetID(cfg.Targets[0].Headers["ce-id"])
+		event.SetSource(cfg.Targets[0].Headers["ce-source"])
+		event.SetType(cfg.Targets[0].Headers["ce-type"])
+		event.SetDataContentType(cfg.Targets[0].Headers["Content-Type"])
+		event.SetData(cfg.Targets[0].Headers["Content-Type"], cfg.Targets[0].Body)
+		logger.Info("Event", "event", event)
+		gen := generator.NewCloudEventGenerator(cfg, &event, pool, logger)
+
+		logger.Info("Generator initialized")
+		err = gen.Start()
+		if err != nil {
+			logger.Error("Generator failed", "error", err)
+		}
+		gen.Stop()
+	} else {
+		gen := generator.New(cfg, logger, pool)
+		logger.Info("Generator initialized")
+
+		err = gen.Start()
+		if err != nil {
+			logger.Error("Generator failed", "error", err)
+		}
+		gen.Stop()
 	}
-
 }
 
 func ping(cfg *config.Config, logger *slog.Logger, pool connection.Pool) {

@@ -2,23 +2,40 @@ package function
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
+	"log"
+	"strconv"
 
 	"github.com/cloudevents/sdk-go/v2/event"
 )
 
 // Handle an event.
 func Handle(ctx context.Context, e event.Event) (*event.Event, error) {
-	/*
-	 * YOUR CODE HERE
-	 *
-	 * Try running `go test`.  Add more test as you code in `handle_test.go`.
-	 */
 
-	event_base64 := base64.StdEncoding.EncodeToString(e.Data())
-	fmt.Println(event_base64)
-	return &e, nil // echo to caller
+	log.Printf("Received event: ID=%s, Type=%s, Source=%s", e.ID(), e.Type(), e.Source())
+	log.Printf("Content Type: %s", e.DataContentType())
+
+	rawData := string(e.Data())
+	log.Printf("Raw data (quoted): %q", rawData)      // Will show exact string content
+	log.Printf("Raw data bytes: %v", []byte(rawData)) // Will show actual bytes
+	log.Printf("Raw data length: %d", len(rawData))   // Will show length
+
+	counter, err := strconv.Atoi(rawData)
+	if err != nil {
+		log.Printf("Error converting data to integer: %v", err)
+		return nil, fmt.Errorf("failed to convert data to integer: %v, raw data: %q, bytes: %v",
+			err, rawData, []byte(rawData))
+	}
+
+	// Increment counter
+	counter++
+	// Create response event
+	responseEvent := e.Clone()
+	if err := responseEvent.SetData(e.DataContentType(), strconv.Itoa(counter)); err != nil {
+		return nil, fmt.Errorf("failed to set response data: %v", err)
+	}
+
+	return &responseEvent, nil
 }
 
 /*

@@ -1,0 +1,29 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: knative-eventing-channelable-manipulator
+rules:
+- apiGroups:
+  - messaging.knative.dev
+  resources:
+  - inmemorychannels
+  - channels
+  verbs:
+  - get
+  - list
+  - watch
+  - update
+  - patch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: eventing-channelable-manipulator
+subjects:
+- kind: ServiceAccount
+  name: eventing-controller
+  namespace: knative-eventing
+roleRef:
+  kind: ClusterRole
+  name: knative-eventing-channelable-manipulator
+  apiGroup: rbac.authorization.k8s.io

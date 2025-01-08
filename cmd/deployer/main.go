@@ -15,7 +15,7 @@ import (
 )
 
 func main() {
-	action := flag.String("action", "deploy", "Action to perform: deploy, delete")
+	action := flag.String("action", "deploy", "Action to perform: deploy, delete, sequence")
 	name := flag.String("name", "empty-go", "Name of the function")
 	image := flag.String("image", "empty-go", "Image to deploy")
 	amount := flag.Int("amount", 1, "Amount of functions to deploy")
@@ -58,6 +58,16 @@ func main() {
 				fmt.Printf("Failed to delete service %d: %v\n", i, err)
 			} else {
 				fmt.Printf("Deleted service %s\n", ksvc.Name)
+			}
+		}
+	case "sequence":
+		// Deploy a sequence of functions
+		for i := 1; i < 11; i++ {
+			newName := fmt.Sprintf("%s-%d", *name, i)
+			ksvc := createKnativeService(newName, *image)
+			err := k8sClient.Create(context.Background(), ksvc)
+			if err != nil {
+				fmt.Printf("Failed to create sequence: %v\n", err)
 			}
 		}
 	default:

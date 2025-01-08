@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"time"
 
@@ -21,6 +22,7 @@ type Target struct {
 	Headers    map[string]string `yaml:"headers,omitempty"`
 	Weight     int               `yaml:"weight"`
 	HostHeader string            `yaml:"-"`
+	Body       string            `yaml:"body"`
 }
 
 // Custom duration type for YAML parsing
@@ -71,5 +73,6 @@ func Load(path string, devMode bool) (*Config, error) {
 			cfg.Targets[i].URL = cfg.BaseURL
 		}
 	}
+	fmt.Println("cfg", cfg)
 	return &cfg, nil
 }

@@ -71,7 +71,10 @@ up spot="": _check-env
         --cloud=gce \
         --project="${TF_VAR_project_id}" \
         --set="spec.kubeAPIServer.enableAdmissionPlugins=PodNodeSelector" \
-        --set="spec.kubeAPIServer.enableAdmissionPlugins=PodTolerationRestriction" 
+        --set="spec.kubeAPIServer.enableAdmissionPlugins=PodTolerationRestriction" \
+        --set="spec.metricsServer.enabled=true" \
+        --set="spec.metricsServer.insecure=true" \
+        --yes
 
     if [ -n "$spot" ]; then
         # Configure spot instances
@@ -132,6 +135,7 @@ install-knative: _check-env
 
     kubectl apply -f https://github.com/knative/eventing/releases/download/knative-v1.16.3/eventing-crds.yaml
     kubectl apply -f https://github.com/knative/eventing/releases/download/knative-v1.16.3/eventing-core.yaml
+    kubectl apply -f https://github.com/knative/eventing/releases/download/knative-v1.16.3/in-memory-channel.yaml
 
     # Add NodeSelector annotation to knative namespaces
     kubectl annotate namespace knative-serving scheduler.alpha.kubernetes.io/node-selector="dedicated=knative"
@@ -179,6 +183,11 @@ install-knative: _check-env
     kubectl patch servicemonitor broker-filter -n knative-eventing --type json -p '[{"op": "replace", "path": "/spec/endpoints/0/interval", "value": "5s"}]'
     kubectl patch servicemonitor broker-ingress -n knative-eventing --type json -p '[{"op": "replace", "path": "/spec/endpoints/0/interval", "value": "5s"}]'
 
+
+    # delete the pods so they are recreated with the new labels
+    kubectl delete pod --all -n knative-serving
+    kubectl delete pod --all -n knative-eventing
+    kubectl delete pod --all -n metrics
     echo "Done"
 
 # Destroy the cluster and clean up resources
@@ -226,5 +235,15 @@ debug-cluster: _check-env
         --output=yaml
 
 build:
-    docker build -t luccadibenedetto/workload-generator:latest --push -f ../Dockerfile.wg . 
+    docker build -t luccadibenedetto/workload-generator:latest --push -f ../Dockerfile.wg ../ 
     
+eventing:
+    go run ../cmd/deployer/main.go --action=sequence --image=go-handler-event --name=event-handler --amount=10
+    kubectl apply -f manifests/functions/sequence.yaml
+
+    kubectl apply -f manifests/workload-generator/container-source.yaml
+
+destroy-eventing:
+    go run ../cmd/deployer/main.go --action=destroy --image=go-handler-event --name=event-handler --amount=10
+    kubectl delete -f manifests/functions/sequence.yaml
+    kubectl delete -f manifests/workload-generator/container-source.yaml
