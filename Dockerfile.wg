@@ -9,6 +9,6 @@ FROM alpine:3.18
 RUN apk add --no-cache bash
 WORKDIR /app
 COPY --from=builder /app/workload-generator .
-COPY *.yaml .
+COPY ./experiments/* .
 
 ENTRYPOINT ["/bin/bash"]

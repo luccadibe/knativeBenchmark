@@ -9,4 +9,4 @@ build:
   builder: pack
 deploy:
   namespace: functions
-  image: docker.io/luccadibenedetto/empty-py-http:latest
+  image: docker.io/luccadibenedetto/empty-py-http@sha256:7cc3bee94e241a687f8a1b315f47f70f0b1c0fc61260e6b4c362e13d3946b2e8

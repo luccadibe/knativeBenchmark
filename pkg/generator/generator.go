@@ -2,9 +2,11 @@ package generator
 
 import (
 	"context"
+	"hash/maphash"
 	"io"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"sync"
 	"time"
 
@@ -87,17 +89,24 @@ func (g *generator) run() error {
 			for _, target := range g.cfg.Targets {
 				g.wg.Add(1)
 				go func(target *config.Target) {
+					efficientLogger := g.logger.With("target", target.URL)
 					defer g.wg.Done()
 					start := time.Now()
 					resp, err := g.Pool.Get(target)
 					if err != nil {
-						g.logger.Error("Request error", "target", target.URL, "error", err)
+						efficientLogger.Error("Request error", "error", err)
 						return
 					}
 					defer resp.Body.Close()
+					// we expect a boolean response specifying if the function is cold
+					body, err := io.ReadAll(resp.Body)
+					if err != nil {
+						efficientLogger.Error("Failed to read response body", "error", err)
+						return
+					}
 
 					duration := time.Since(start)
-					g.logger.Info("Success", "target", target.URL, "latency", duration, "status", resp.StatusCode)
+					efficientLogger.Info("Success", "latency", duration, "status", resp.StatusCode, "isCold", string(body))
 					requestCount++
 				}(target)
 			}
@@ -124,22 +133,22 @@ func (g *generator) runMaxThroughput() error {
 			for _, target := range g.cfg.Targets {
 				g.wg.Add(1)
 				go func(target *config.Target) {
+					efficientLogger := g.logger.With("target", target.URL)
 					defer g.wg.Done()
 					start := time.Now()
 					resp, err := g.Pool.Get(target)
 					if err != nil {
-						g.logger.Error("Request error", "target", target.URL, "error", err)
+						efficientLogger.Error("Request error", "error", err)
 						requestCount++
 						return
 					}
 					if resp.StatusCode != http.StatusOK {
-						g.logger.Error("Request failed", "target", target.URL, "status", resp.StatusCode)
+						efficientLogger.Error("Request failed", "status", resp.StatusCode)
 						body, err := io.ReadAll(resp.Body)
 						if err != nil {
-							g.logger.Error("Failed to read response body", "target", target.URL, "error", err)
+							efficientLogger.Error("Failed to read response body", "error", err)
 						}
-						g.logger.Error("Non-200 response",
-							"target", target.URL,
+						efficientLogger.Error("Non-200 response",
 							"status", resp.StatusCode,
 							"headers", resp.Header,
 							"body", string(body))
@@ -149,7 +158,7 @@ func (g *generator) runMaxThroughput() error {
 					defer resp.Body.Close()
 
 					duration := time.Since(start)
-					g.logger.Info("Success", "target", target.URL, "latency", duration, "status", resp.StatusCode)
+					efficientLogger.Info("Success", "latency", duration, "status", resp.StatusCode)
 					requestCount++
 				}(target)
 			}
@@ -216,27 +225,30 @@ func (c *cloudEventGenerator) run() error {
 
 	ticker := time.NewTicker(interval)
 	startTime := time.Now()
-	requestCount := 0
 	target := c.cfg.Targets[0]
-
+	efficientLogger := c.logger.With("target", target.URL)
 	for {
 		select {
 		case <-c.ctx.Done():
-			c.logger.Info("Generator stopped", "totalRequests", requestCount)
+			c.logger.Info("Generator stopped")
 			return nil
 		case <-ticker.C:
 			c.wg.Add(1)
 			go func(target *config.Target) {
 				defer c.wg.Done()
 				start := time.Now()
+				// A unique id allows per request comparison
+				// There should be no problem with concurrency here
+				id := strconv.Itoa(int(new(maphash.Hash).Sum64()))
+				c.event.SetID(id)
+
 				resp, err := c.Pool.GenerateCloudEvent(target, c.event)
 				if err != nil {
-					c.logger.Error("Request error", "target", target.URL, "error", err)
+					efficientLogger.Error("Request error", "error", err)
 					return
 				}
 				duration := time.Since(start)
-				c.logger.Info("Success", "target", target.URL, "latency", duration, "status", resp.StatusCode)
-				requestCount++
+				efficientLogger.Info("Success", "latency", duration, "status", resp.StatusCode, "id", id)
 			}(target)
 		}
 		if c.cfg.Rate.Duration.Duration > 0 && time.Since(startTime) > c.cfg.Rate.Duration.Duration {

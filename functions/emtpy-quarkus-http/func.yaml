@@ -1,0 +1,20 @@
+specVersion: 0.36.0
+name: emtpy-quarkus-http
+runtime: quarkus
+image: docker.io/luccadibenedetto/empty-quarkus-http:latest
+namespace: functions
+created: 2025-01-13T15:35:22.191531825+01:00
+build:
+  builder: pack
+  buildEnvs:
+  - name: BP_NATIVE_IMAGE
+    value: "false"
+  - name: BP_JVM_VERSION
+    value: "21"
+  - name: MAVEN_S2I_ARTIFACT_DIRS
+    value: target/quarkus-app
+  - name: S2I_SOURCE_DEPLOYMENTS_FILTER
+    value: lib quarkus-run.jar app quarkus
+deploy:
+  namespace: functions
+  image: docker.io/luccadibenedetto/empty-quarkus-http@sha256:7b76ee0f464c85455b5170aed0cf9d642300aea45998dc341314a8a4fa8277b9

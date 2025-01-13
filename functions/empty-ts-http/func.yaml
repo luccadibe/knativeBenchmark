@@ -11,4 +11,4 @@ build:
     value: build
 deploy:
   namespace: functions
-  image: docker.io/luccadibenedetto/empty-ts-http@sha256:ec14f22ffe7b6bc127789c06c9f3a1a9fcef7b6ecb9eb5a70185d9eb807723af
+  image: docker.io/luccadibenedetto/empty-ts-http@sha256:133eba530131b4b1384734010af2883236c1bb31c3cf29f8553f261e9bd7d004

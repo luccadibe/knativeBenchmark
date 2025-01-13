@@ -94,6 +94,7 @@ up spot="": _check-env
     
     kubectl create namespace functions
     kubectl create namespace metrics
+    kubectl create namespace workload-generator
     # Setup node labels - get second node (first is control plane)
     #NODE_NAME=$(kubectl get nodes --no-headers -o custom-columns=":metadata.name" | tail -1)
     #kubectl label node ${NODE_NAME} workload-generator=true
@@ -236,6 +237,7 @@ debug-cluster: _check-env
 
 build:
     docker build -t luccadibenedetto/workload-generator:latest --push -f ../Dockerfile.wg ../ 
+    docker build -t luccadibenedetto/cloudevent-reciever:latest --push -f ../Dockerfile.reciever ../
     
 eventing:
     go run ../cmd/deployer/main.go --action=sequence --image=go-handler-event --name=event-handler --amount=10
@@ -247,3 +249,92 @@ destroy-eventing:
     go run ../cmd/deployer/main.go --action=destroy --image=go-handler-event --name=event-handler --amount=10
     kubectl delete -f manifests/functions/sequence.yaml
     kubectl delete -f manifests/workload-generator/container-source.yaml
+
+serving-scenario-1:
+    #GO
+    go run ../cmd/deployer/main.go --action=deploy --image=empty-go-http --name=empty-go-http --amount=1
+    sleep 10
+    kubectl exec -it $(kubectl get pods -o jsonpath="{.items[0].metadata.name}" -n workload-generator) -n workload-generator -- ./workload-generator --config=serving-scenario-1-go.yaml --prefix=serving-scenario-1-go
+    go run ../cmd/deployer/main.go --action=delete --image=empty-go-http --name=empty-go-http --amount=1
+
+    #PYTHON
+    go run ../cmd/deployer/main.go --action=deploy --image=empty-python-http --name=empty-python-http --amount=1
+    sleep 10
+    kubectl exec -it $(kubectl get pods -o jsonpath="{.items[0].metadata.name}" -n workload-generator) -n workload-generator -- ./workload-generator --config=serving-scenario-1-python.yaml --prefix=serving-scenario-1-python
+    go run ../cmd/deployer/main.go --action=delete --image=empty-python-http --name=empty-python-http --amount=1
+    go run ../cmd/deployer/main.go --action=delete --image=empty-node-http --name=empty-node-http --amount=1
+
+    #QUARKUS
+    go run ../cmd/deployer/main.go --action=deploy --image=empty-quarkus-http --name=empty-quarkus-http --amount=1
+    sleep 10
+    kubectl exec -it $(kubectl get pods -o jsonpath="{.items[0].metadata.name}" -n workload-generator) -n workload-generator -- ./workload-generator --config=serving-scenario-1-quarkus.yaml --prefix=serving-scenario-1-quarkus
+    go run ../cmd/deployer/main.go --action=delete --image=empty-quarkus-http --name=empty-quarkus-http --amount=1
+
+    #SPRINGBOOT
+    go run ../cmd/deployer/main.go --action=deploy --image=empty-springboot-http --name=empty-springboot-http --amount=1
+    sleep 10
+    kubectl exec -it $(kubectl get pods -o jsonpath="{.items[0].metadata.name}" -n workload-generator) -n workload-generator -- ./workload-generator --config=serving-scenario-1-springboot.yaml --prefix=serving-scenario-1-springboot
+    go run ../cmd/deployer/main.go --action=delete --image=empty-springboot-http --name=empty-springboot-http --amount=1
+    
+    #RUST
+    go run ../cmd/deployer/main.go --action=deploy --image=empty-rust-http --name=empty-rust-http --amount=1
+    sleep 10
+    kubectl exec -it $(kubectl get pods -o jsonpath="{.items[0].metadata.name}" -n workload-generator) -n workload-generator -- ./workload-generator --config=serving-scenario-1-rust.yaml --prefix=serving-scenario-1-rust
+    go run ../cmd/deployer/main.go --action=delete --image=empty-rust-http --name=empty-rust-http --amount=1
+
+    #TYPESCRIPT
+    go run ../cmd/deployer/main.go --action=deploy --image=empty-typescript-http --name=empty-typescript-http --amount=1
+    sleep 10
+    kubectl exec -it $(kubectl get pods -o jsonpath="{.items[0].metadata.name}" -n workload-generator) -n workload-generator -- ./workload-generator --config=serving-scenario-1-typescript.yaml --prefix=serving-scenario-1-typescript
+    go run ../cmd/deployer/main.go --action=delete --image=empty-typescript-http --name=empty-typescript-http --amount=1
+
+    # Testing the autoscaling strategy
+    go run ../cmd/deployer/main.go --action=deploy --image=empty-go-http --name=empty-go-http --amount=1
+    sleep 10
+    go run ../cmd/deployer/main.go --action=patch --name=empty-go-http-0 --metric=concurrency --target=20
+    kubectl exec -it $(kubectl get pods -o jsonpath="{.items[0].metadata.name}" -n workload-generator) -n workload-generator -- ./workload-generator --config=serving-scenario-1-go.yaml --prefix=serving-scenario-1-go-concurrency-20
+    go run ../cmd/deployer/main.go --action=patch --name=empty-go-http-0 --metric=concurrency --target=40
+    sleep 10
+    kubectl exec -it $(kubectl get pods -o jsonpath="{.items[0].metadata.name}" -n workload-generator) -n workload-generator -- ./workload-generator --config=serving-scenario-1-go.yaml --prefix=serving-scenario-1-go-concurrency-40
+    
+    go run ../cmd/deployer/main.go --action=patch --name=empty-go-http-0 --metric=concurrency --target=60
+    sleep 10
+    kubectl exec -it $(kubectl get pods -o jsonpath="{.items[0].metadata.name}" -n workload-generator) -n workload-generator -- ./workload-generator --config=serving-scenario-1-go.yaml --prefix=serving-scenario-1-go-concurrency-60
+
+    go run ../cmd/deployer/main.go --action=patch --name=empty-go-http-0 --metric=concurrency --target=80
+    sleep 10
+    kubectl exec -it $(kubectl get pods -o jsonpath="{.items[0].metadata.name}" -n workload-generator) -n workload-generator -- ./workload-generator --config=serving-scenario-1-go.yaml --prefix=serving-scenario-1-go-concurrency-80
+
+    go run ../cmd/deployer/main.go --action=patch --name=empty-go-http-0 --metric=concurrency --target=100
+    sleep 10
+    kubectl exec -it $(kubectl get pods -o jsonpath="{.items[0].metadata.name}" -n workload-generator) -n workload-generator -- ./workload-generator --config=serving-scenario-1-go.yaml --prefix=serving-scenario-1-go-concurrency-100
+
+    go run ../cmd/deployer/main.go --action=patch --name=empty-go-http-0 --metric=rps --target=50
+    sleep 10
+    kubectl exec -it $(kubectl get pods -o jsonpath="{.items[0].metadata.name}" -n workload-generator) -n workload-generator -- ./workload-generator --config=serving-scenario-1-go.yaml --prefix=serving-scenario-1-go-rps-50
+
+    go run ../cmd/deployer/main.go --action=patch --name=empty-go-http-0 --metric=rps --target=100
+    sleep 10
+    kubectl exec -it $(kubectl get pods -o jsonpath="{.items[0].metadata.name}" -n workload-generator) -n workload-generator -- ./workload-generator --config=serving-scenario-1-go.yaml --prefix=serving-scenario-1-go-rps-100
+
+    go run ../cmd/deployer/main.go --action=patch --name=empty-go-http-0 --metric=rps --target=150
+    sleep 10
+    kubectl exec -it $(kubectl get pods -o jsonpath="{.items[0].metadata.name}" -n workload-generator) -n workload-generator -- ./workload-generator --config=serving-scenario-1-go.yaml --prefix=serving-scenario-1-go-rps-150
+
+    go run ../cmd/deployer/main.go --action=patch --name=empty-go-http-0 --metric=rps --target=200
+    sleep 10
+    kubectl exec -it $(kubectl get pods -o jsonpath="{.items[0].metadata.name}" -n workload-generator) -n workload-generator -- ./workload-generator --config=serving-scenario-1-go.yaml --prefix=serving-scenario-1-go-rps-200
+
+serving-scenario-2:
+    echo "TODO"
+
+extract-logfiles:
+    #All the log files are in the /logs directory
+    # First zip the logs inside the pod
+    kubectl exec -it $(kubectl get pods -o jsonpath="{.items[0].metadata.name}" -n workload-generator) -n workload-generator -- tar -czf logs.tar.gz /logs
+    # Then copy the logs to the analysis directory
+    kubectl cp workload-generator/$(kubectl get pods -o jsonpath="{.items[0].metadata.name}" -n workload-generator):/app/logs.tar.gz ../analysis/logs/logs.tar.gz
+    # Then unzip the logs
+    tar -xzf ../analysis/logs/logs.tar.gz
+    # Then delete the zip file
+    rm ../analysis/logs/logs.tar.gz

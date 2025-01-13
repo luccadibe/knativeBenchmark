@@ -1,0 +1,21 @@
+specVersion: 0.36.0
+name: emtpy-springboot-http
+runtime: springboot
+image: docker.io/luccadibenedetto/empty-springboot-http:latest
+namespace: functions
+created: 2025-01-13T15:37:44.438570083+01:00
+build:
+  builder: pack
+  buildEnvs:
+  - name: BP_NATIVE_IMAGE
+    value: "false"
+  - name: BP_JVM_VERSION
+    value: "21"
+  - name: BP_MAVEN_ACTIVE_PROFILES
+    value: native
+deploy:
+  namespace: functions
+  image: docker.io/luccadibenedetto/empty-springboot-http@sha256:9898a42fb40b97c2d3b8ada39403442684d8e4a327692c33a1f088dedf9d84ca
+  healthEndpoints:
+    liveness: /actuator/health
+    readiness: /actuator/health

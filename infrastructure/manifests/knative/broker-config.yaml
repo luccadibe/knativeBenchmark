@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: broker-config
+  namespace: functions
+data:
+  channel-template-spec: |
+    apiVersion: messaging.knative.dev/v1
+    kind: InMemoryChannel

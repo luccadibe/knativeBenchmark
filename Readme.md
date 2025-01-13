@@ -292,3 +292,136 @@ todo:
 - start a rough draft of the report.
 just eventing -> deployes the sequence and the workload generator container source.
 just destroy-eventing -> destroys the sequence and the workload generator container source.
+
+for the report:
+  im using in memory channels here, not kafka or rabbitmq, knative docs say that in memory channels are  not pod ready,
+  but the other options are out of scope for this benchmark.
+
+
+The cloudevent we generate will have counter.
+We can compare sent vs received timestaps for each event id.
+
+Eventing scenario 1:
+  broker / trigger
+  a)
+  ContainerSource -> broker -> trigger -> Service
+  - container-source-1.yaml points to the broker
+  - broker.yaml points to the trigger
+  - trigger.yaml points to the service
+  - the service is a very simple http server that logs timestamps to a file.
+  this way we are interested in the latency of the broker and the trigger.
+  b)
+  broker / trigger with many triggers
+  - we can deploy many triggers and see how they scale.
+
+Eventing scenario 2:
+  sequence
+  ContainerSource -> sequence -> Service
+  - container-source-2.yaml points to the sequence
+  - sequence.yaml points to the service
+  - the service is a very simple http server that logs timestamps to a file.
+  this way we are interested in the latency of the sequence.
+  - we can analyse if the number of steps in the sequence is a bottleneck.
+
+Knative Functions - Serving
+Scenario 1:
+  hit a single function with max throughput.
+  - do this with different programming languages and templates.
+  - go , python , node , quarkus , springboot , typescript, rust
+  - do this with different function configurations.
+  specifically interested in the autoscaling strategy. Possible values: "concurrency", "rps", "cpu", "memory"
+Scenario 2:
+  scale up the number of functions and distribute the load among them.
+  - do this with just the go http template.
+
+
+-	resources
+
+		requests
+		cpu: A CPU resource request for the container with deployed function. See related Kubernetes docs.
+		memory: A memory resource request for the container with deployed function. See related Kubernetes docs.
+		limits
+		cpu: A CPU resource limit for the container with deployed function. See related Kubernetes docs.
+		memory: A memory resource limit for the container with deployed function. See related Kubernetes docs.
+
+		from func.yaml:
+
+		options:
+		  scale:
+		    min: 0
+		    max: 10
+		    metric: concurrency
+		    target: 75
+		    utilization: 75
+		  resources:
+		    requests:
+		      cpu: 100m
+		      memory: 128Mi
+		    limits:
+		      cpu: 1000m
+		      memory: 256Mi
+		      concurrency: 100
+
+
+
+						containerConcurrency
+				int64	(Optional)
+				ContainerConcurrency specifies the maximum allowed in-flight (concurrent) requests per container of the Revision. Defaults to 0 which means concurrency to the application is not limited, and the system decides the target concurrency for the autoscaler.
+
+				timeoutSeconds
+				int64	(Optional)
+				TimeoutSeconds is the maximum duration in seconds that the request instance is allowed to respond to a request. If unspecified, a system default will be provided.
+
+				responseStartTimeoutSeconds
+				int64	(Optional)
+				ResponseStartTimeoutSeconds is the maximum duration in seconds that the request routing layer will wait for a request delivered to a container to begin sending any network traffic.
+
+				idleTimeoutSeconds
+				int64	(Optional)
+				IdleTimeoutSeconds is the maximum duration in seconds a request will be allowed to stay open while not receiving any bytes from the user’s application. If unspecified, a system default will be provided.
+
+
+					apiVersion: serving.knative.dev/v1
+				kind: Service
+				metadata:
+				  name: helloworld-go
+				  namespace: default
+				spec:
+				  template:
+				    metadata:
+				      annotations:
+					  	-> this needs to be patched to change the autoscaling strategy.
+						Possible values: "concurrency", "rps", "cpu", "memory"
+						for concurrency:
+				        autoscaling.knative.dev/metric: "concurrency"
+				        autoscaling.knative.dev/target-utilization-percentage: "70"
+
+						for rps:
+						autoscaling.knative.dev/metric: "rps"
+				        autoscaling.knative.dev/target: "150"
+
+						for cpu:
+						autoscaling.knative.dev/class: "hpa.autoscaling.knative.dev"
+				        autoscaling.knative.dev/metric: "cpu"
+				        autoscaling.knative.dev/target: "100"
+
+						for memory:
+						autoscaling.knative.dev/class: "hpa.autoscaling.knative.dev"
+				        autoscaling.knative.dev/metric: "memory"
+				        autoscaling.knative.dev/target: "75"
+	*/
+
+TODO rn:
+
+find out default autoscaling strategy. -> idk .(
+test new actions of deployer. -> done they work!
+Prometheus metrics confirm everything is working fine, and extract metrics via justfile -> still todo
+Create justfile pipeline for the benchmark. -> part 1 done  
+Part 2 is knative eventing pipeline
+1) test all functions:
+curl http://localhost:8080 --header "Host:  empty-rust-http.functions.example.com" -> true
+curl http://localhost:8080 --header "Host:  empty-quarkus-http.functions.example.com" -> "true"
+curl http://localhost:8080 --header "Host:  empty-springboot-http.functions.example.com -> true
+curl http://localhost:8080 --header "Host:  empty-go.functions.example.com -> true
+curl http://localhost:8080 --header "Host:  empty-ts-http.functions.example.com -> true
+curl http://localhost:8080 --header "Host:  empty-py-http.functions.example.com -> True

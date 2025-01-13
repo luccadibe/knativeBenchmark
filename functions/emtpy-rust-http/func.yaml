@@ -1,0 +1,14 @@
+specVersion: 0.36.0
+name: emtpy-rust-http
+runtime: rust
+image: docker.io/luccadibenedetto/empty-rust-http:latest
+namespace: functions
+created: 2025-01-13T15:43:23.961093279+01:00
+build:
+  builder: pack
+  buildEnvs:
+  - name: BP_RUSTUP_ENABLED
+    value: "false"
+deploy:
+  namespace: functions
+  image: docker.io/luccadibenedetto/empty-rust-http@sha256:d08f20b57da58836dacd724855f2616e9bd316420acb998f2f8298bfbf79f59f

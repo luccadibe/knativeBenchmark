@@ -1,0 +1,17 @@
+targets:
+  - url: "http://empty-quarkus-http-0.functions.svc.cluster.local"
+    weight: 1
+    headers:
+      Content-Type: "application/json"
+rate:
+  requestsPerSecond: 1000
+  duration: 1m
+
+  # HTTP client settings
+  maxIdleConns: 100
+  maxIdleConnsPerHost: 100
+  idleConnTimeout: 90s
+  timeout: 30s
+
+store:
+  logDirPath: "/logs"

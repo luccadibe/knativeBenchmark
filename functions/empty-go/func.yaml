@@ -2,11 +2,11 @@ specVersion: 0.36.0
 name: empty-go
 runtime: go
 registry: luccadibenedetto
-image: docker.io/luccadibenedetto/empty-go:latest
+image: docker.io/luccadibenedetto/empty-go-http:latest
 namespace: functions
 created: 2024-12-10T11:10:27.411093211+01:00
 build:
   builder: pack
 deploy:
   namespace: functions
-  image: docker.io/luccadibenedetto/empty-go:latest
+  image: docker.io/luccadibenedetto/empty-go-http@sha256:8b20a6abec9fb4cfca4b1fc53e899366d3ae1a8abaa0fe1b2192627a37f1bddc

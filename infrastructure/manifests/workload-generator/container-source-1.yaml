@@ -1,0 +1,42 @@
+apiVersion: sources.knative.dev/v1
+kind: ContainerSource
+metadata:
+  name: event-source
+  namespace: functions  # Match your sequence namespace
+spec:
+  template:
+    metadata:
+      labels:
+        app: workload-generator
+    spec:
+      containers:
+      - name: workload-generator
+        image: "luccadibenedetto/workload-generator:latest"
+        ports:
+        - containerPort: 8080
+        stdin: true
+        tty: true
+        securityContext:
+          allowPrivilegeEscalation: true
+          privileged: true
+        volumeMounts:
+        - name: workload-generator-logs
+          mountPath: /logs
+      volumes:
+      - name: workload-generator-logs
+        hostPath:
+          path: /var/log/workload-generator
+          type: DirectoryOrCreate
+      tolerations:
+        - key: "dedicated"
+          operator: "Equal"
+          value: "workload-generator"
+          effect: "NoSchedule" 
+      nodeSelector:
+        dedicated: "workload-generator"
+  sink:
+    ref:
+      apiVersion: eventing.knative.dev/v1
+      kind: Broker
+      name: broker
+      namespace: functions

@@ -58,3 +58,10 @@ spec:
         kind: Service
         name: event-handler-10
         namespace: functions
+
+  reply:
+    ref:
+      kind: Service
+      apiVersion: serving.knative.dev/v1
+      name: receiver
+      namespace: functions
