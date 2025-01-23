@@ -7,12 +7,7 @@ spec:
   template:
     spec:
       containers:
-        image: luccadibenedetto/cloudevent-reciever:latest
-        volumeMounts:
-        - name: reciever-logs
-          mountPath: /logs
-      volumes:
-      - name: reciever-logs
-        hostPath:
-          path: /var/log/reciever
-          type: DirectoryOrCreate
+        - image: luccadibenedetto/cloudevent-reciever:latest
+          env:
+            - name: LOG_TO
+              value: stdout

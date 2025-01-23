@@ -425,3 +425,13 @@ curl http://localhost:8080 --header "Host:  empty-springboot-http.functions.exam
 curl http://localhost:8080 --header "Host:  empty-go.functions.example.com -> true
 curl http://localhost:8080 --header "Host:  empty-ts-http.functions.example.com -> true
 curl http://localhost:8080 --header "Host:  empty-py-http.functions.example.com -> True
+
+
+
+todo rn:
+
+-> check that the rabbitmq cluster has enough resources.
+
+run scenarios.
+find a way to persist the logs of the reciever.
+

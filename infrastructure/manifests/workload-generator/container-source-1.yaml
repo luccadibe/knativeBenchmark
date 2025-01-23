@@ -38,5 +38,5 @@ spec:
     ref:
       apiVersion: eventing.knative.dev/v1
       kind: Broker
-      name: broker
-      namespace: functions
+      name: rabbitmq-broker
+      namespace: knative-eventing

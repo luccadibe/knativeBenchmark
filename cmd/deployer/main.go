@@ -65,6 +65,7 @@ func main() {
 	}
 }
 
+// TODO
 func deployBrokerScenario(ctx context.Context, c client.Client, brokerName, name, image string, amount int) {
 	// Deploy broker
 	broker := &eventingv1.Broker{
@@ -237,11 +238,11 @@ func createKnativeService(name string, image string) *servingv1.Service {
 										},
 									},
 									SecurityContext: &corev1.SecurityContext{
-										AllowPrivilegeEscalation: ptr(false),
+										AllowPrivilegeEscalation: ptr(true),
 										Capabilities: &corev1.Capabilities{
 											Drop: []corev1.Capability{"ALL"},
 										},
-										RunAsNonRoot: ptr(true),
+										RunAsNonRoot: ptr(false),
 										SeccompProfile: &corev1.SeccompProfile{
 											Type: "RuntimeDefault",
 										},

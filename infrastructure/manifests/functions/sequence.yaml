@@ -6,7 +6,7 @@ metadata:
 spec:
   channelTemplate:
     apiVersion: messaging.knative.dev/v1
-    kind: InMemoryChannel
+    kind: KafkaChannel
   steps:
     - ref:
         apiVersion: serving.knative.dev/v1

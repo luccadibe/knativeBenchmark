@@ -1,13 +1,14 @@
 apiVersion: eventing.knative.dev/v1
 kind: Trigger
 metadata:
-  name: my-service-trigger
+  name: rabbitmq-trigger
+  namespace: knative-eventing
 spec:
-  broker: broker
+  broker: rabbitmq-broker
   subscriber:
     ref:
       apiVersion: serving.knative.dev/v1
       kind: Service
-      name: receiver
+      name: reciever
       namespace: functions
-    uri: http://receiver.functions.svc.cluster.local:8080
+    #uri: http://reciever.functions.svc.cluster.local:8080
