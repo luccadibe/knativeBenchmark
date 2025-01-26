@@ -4,6 +4,8 @@ go 1.23.2
 
 require (
 	github.com/cloudevents/sdk-go/v2 v2.15.2
+	github.com/mattn/go-sqlite3 v1.14.24
+	github.com/spf13/cobra v1.8.1
 	github.com/stretchr/testify v1.9.0
 	golang.org/x/time v0.7.0
 	gopkg.in/yaml.v2 v2.4.0
@@ -46,6 +48,7 @@ require (
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.21.0 // indirect
 	github.com/hashicorp/golang-lru v1.0.2 // indirect
+	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/kelseyhightower/envconfig v1.4.0 // indirect
