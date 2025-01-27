@@ -8,4 +8,4 @@ build:
   builder: pack
 deploy:
   namespace: functions
-  image: docker.io/luccadibenedetto/echo-go-http@sha256:8b84839cca4c090a38c2667f1edebfbb66d8a8da8d9288f1f0934eb2455f2800
+  image: docker.io/luccadibenedetto/echo-go-http@sha256:be4afb337d100d3cff725f99a172914aa6a5c9bc3742deb6f120544706b2ae2d

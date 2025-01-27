@@ -83,7 +83,7 @@ func deployTrigger(ctx context.Context, k8sClient client.Client, name, brokerNam
 					Ref: &duckv1.KReference{
 						APIVersion: "serving.knative.dev/v1",
 						Kind:       "Service",
-						Name:       "reciever",
+						Name:       "reciever-0",
 						Namespace:  "functions",
 					},
 				},
