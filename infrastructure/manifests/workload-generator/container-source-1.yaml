@@ -2,7 +2,7 @@ apiVersion: sources.knative.dev/v1
 kind: ContainerSource
 metadata:
   name: event-source
-  namespace: functions  # Match your sequence namespace
+  namespace: workload-generator
 spec:
   template:
     metadata:

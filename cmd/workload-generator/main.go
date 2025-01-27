@@ -82,7 +82,7 @@ func ping(cfg *config.Config, logger *slog.Logger, pool connection.Pool) {
 			logger.Error("Failed to ping endpoint", "target", target.URL, "error", err)
 			panic(err)
 		}
-		defer resp.Body.Close()
-		logger.Info("Pinged endpoint", "target", target.URL, "status", resp.StatusCode)
+		defer resp.Response.Body.Close()
+		logger.Info("Pinged endpoint", "target", target.URL, "status", resp.Response.StatusCode, "TTFB", resp.TTFB, "Total", resp.Total, "DNS", resp.DNSTime, "Connect", resp.ConnectTime, "TLS", resp.TLSTime)
 	}
 }

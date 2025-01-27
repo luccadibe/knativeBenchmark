@@ -19,7 +19,7 @@ import (
 )
 
 func main() {
-	action := flag.String("action", "deploy", "Action to perform: deploy, delete, sequence, broker")
+	action := flag.String("action", "deploy", "Action to perform: deploy, delete, sequence, broker, trigger, delete-trigger")
 	name := flag.String("name", "empty-go", "Name of the function")
 	image := flag.String("image", "empty-go", "Image to deploy")
 	amount := flag.Int("amount", 1, "Amount of functions/triggers to deploy")
@@ -60,8 +60,55 @@ func main() {
 		if err != nil {
 			fmt.Printf("Failed to patch service %s: %v\n", *name, err)
 		}
+	case "trigger":
+		deployTrigger(ctx, k8sClient, *name, *brokerName, *amount)
+	case "delete-trigger":
+		deleteTrigger(ctx, k8sClient, *name, *brokerName, *amount)
 	default:
 		fmt.Println("Invalid action.")
+	}
+}
+
+// Always targets the receiver service
+func deployTrigger(ctx context.Context, k8sClient client.Client, name, brokerName string, amount int) {
+	for i := 0; i < amount; i++ {
+		trigger := &eventingv1.Trigger{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      fmt.Sprintf("%s-trigger-%d", name, i),
+				Namespace: "functions",
+			},
+			Spec: eventingv1.TriggerSpec{
+				Broker: brokerName,
+				Subscriber: duckv1.Destination{
+					Ref: &duckv1.KReference{
+						APIVersion: "serving.knative.dev/v1",
+						Kind:       "Service",
+						Name:       "reciever",
+						Namespace:  "functions",
+					},
+				},
+			},
+		}
+		if err := k8sClient.Create(ctx, trigger); err != nil {
+			fmt.Printf("Failed to create trigger %d: %v\n", i, err)
+		}
+	}
+}
+
+// Delete triggers for a given name prefix
+func deleteTrigger(ctx context.Context, k8sClient client.Client, name, brokerName string, amount int) {
+	for i := 0; i < amount; i++ {
+		trigger := &eventingv1.Trigger{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      fmt.Sprintf("%s-trigger-%d", name, i),
+				Namespace: "functions",
+			},
+		}
+		if err := k8sClient.Delete(ctx, trigger); err != nil {
+			fmt.Printf("Failed to delete trigger %d: %v\n", i, err)
+		} else {
+			fmt.Printf("Deleted trigger %s-trigger-%d\n", name, i)
+		}
 	}
 }
 

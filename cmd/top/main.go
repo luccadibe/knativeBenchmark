@@ -178,7 +178,7 @@ func collectNodeMetrics(clientset *kubernetes.Clientset, metricsClient *metricsc
 			MemoryUsage:      memoryUsage.String(),
 			CPUPercentage:    cpuPercentage,
 			MemoryPercentage: memoryPercentage,
-			Timestamp:        time.Now().Format(time.RFC3339),
+			Timestamp:        time.Now().UTC().Format("2006-01-02T15:04:05.000Z"),
 		}
 
 		if err := storage.StoreNodeMetrics(metrics); err != nil {

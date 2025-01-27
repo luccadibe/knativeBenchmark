@@ -201,6 +201,88 @@ install-knative: _check-env
     echo "Done"
 
 # Destroy the cluster and clean up resources
+
+install-serving: _check-env
+    kubectl apply -f https://github.com/knative/serving/releases/download/knative-v1.16.0/serving-crds.yaml
+    kubectl apply -f https://github.com/knative/serving/releases/download/knative-v1.16.0/serving-core.yaml
+
+    # Add NodeSelector annotation to knative namespaces
+    kubectl annotate namespace knative-serving scheduler.alpha.kubernetes.io/node-selector="dedicated=knative"
+    kubectl annotate namespace knative-serving scheduler.alpha.kubernetes.io/defaultTolerations='[{"operator": "Equal", "value": "knative", "effect": "NoSchedule", "key": "dedicated"}]'
+
+    kubectl wait --for=condition=ready pod --all -n knative-serving
+
+    kubectl patch configmap/config-domain \
+      --namespace knative-serving \
+      --type merge \
+      --patch '{"data":{"example.com":""}}'
+
+    kubectl patch configmap/config-defaults \
+        --namespace knative-serving \
+        --type merge \
+        --patch '{"data":{"revision-memory-request":"10M"}}'
+
+    kubectl patch configmap/config-autoscaler \
+        --namespace knative-serving \
+        --type merge \
+        --patch '{"data":{"min-scale-down-utilization-percentage":"100"}}'
+
+
+    helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+    helm repo update
+    helm install prometheus prometheus-community/kube-prometheus-stack -n metrics -f manifests/prometheus/values.yaml
+
+    # Add NodeSelector annotation to metrics namespace
+    kubectl annotate namespace metrics scheduler.alpha.kubernetes.io/node-selector="dedicated=metrics"
+    kubectl annotate namespace metrics scheduler.alpha.kubernetes.io/defaultTolerations='[{"operator": "Equal", "value": "metrics", "effect": "NoSchedule", "key": "dedicated"}]'
+
+    # SCRAPE INTERVALS OF KNATIVE COMPONENTS
+
+    kubectl apply -f https://raw.githubusercontent.com/knative-extensions/monitoring/main/servicemonitor.yaml
+    kubectl patch servicemonitor controller -n knative-serving --type json -p '[{"op": "replace", "path": "/spec/endpoints/0/interval", "value": "5s"}]'
+    kubectl patch servicemonitor autoscaler -n knative-serving --type json -p '[{"op": "replace", "path": "/spec/endpoints/0/interval", "value": "5s"}]'
+    kubectl patch servicemonitor activator -n knative-serving --type json -p '[{"op": "replace", "path": "/spec/endpoints/0/interval", "value": "5s"}]'
+    kubectl patch servicemonitor webhook -n knative-serving --type json -p '[{"op": "replace", "path": "/spec/endpoints/0/interval", "value": "5s"}]'
+    kubectl delete pod --all -n knative-serving
+    kubectl delete pod --all -n metrics
+
+install-kourier:
+    # Kourier
+    kubectl apply -f https://github.com/knative/net-kourier/releases/download/knative-v1.16.0/kourier.yaml
+
+    kubectl patch configmap/config-network \
+        --namespace knative-serving \
+        --type merge \
+        --patch '{"data":{"ingress-class":"kourier.ingress.networking.knative.dev"}}'
+
+    kubectl --namespace kourier-system get service kourier
+
+install-eventing:
+    kubectl apply -f https://github.com/knative/eventing/releases/download/knative-v1.16.3/eventing-crds.yaml
+    kubectl apply -f https://github.com/knative/eventing/releases/download/knative-v1.16.3/eventing-core.yaml
+    kubectl apply -f https://github.com/knative-extensions/eventing-rabbitmq/releases/download/knative-v1.16.0/rabbitmq-broker.yaml
+    kubectl apply -f https://github.com/knative/docs/raw/main/docs/serving/observability/logging/fluent-bit-collector.yaml
+
+
+    # You must update the StatefulSet volumeClaimTemplates to reference the shared-logs volume .https://knative.dev/docs/serving/observability/logging/collecting-logs/#setting-up-a-local-collector
+    kubectl patch statefulset log-collector -n logging --type json -p '[{"op": "replace", "path": "/spec/volumeClaimTemplates/0/spec/volumeName", "value": "shared-logs"}]'
+
+    # cert manager
+    kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.16.3/cert-manager.yaml
+    #
+    kubectl apply -f https://github.com/rabbitmq/cluster-operator/releases/latest/download/cluster-operator.yml
+
+    kubectl apply -f https://github.com/rabbitmq/messaging-topology-operator/releases/latest/download/messaging-topology-operator-with-certmanager.yaml
+    kubectl annotate namespace knative-eventing scheduler.alpha.kubernetes.io/node-selector="dedicated=knative"
+    kubectl annotate namespace knative-eventing scheduler.alpha.kubernetes.io/defaultTolerations='[{"operator": "Equal", "value": "knative", "effect": "NoSchedule", "key": "dedicated"}]'
+
+
+    kubectl patch servicemonitor broker-filter -n knative-eventing --type json -p '[{"op": "replace", "path": "/spec/endpoints/0/interval", "value": "5s"}]'
+    kubectl patch servicemonitor broker-ingress -n knative-eventing --type json -p '[{"op": "replace", "path": "/spec/endpoints/0/interval", "value": "5s"}]'
+    kubectl delete pod --all -n knative-eventing
+
+    
+
 down: _check-env
     #!/bin/bash
     set -e
@@ -254,6 +336,8 @@ eventing:
 
     kubectl apply -f manifests/workload-generator/container-source.yaml
 
+    kubectl apply -f https://github.com/knative/docs/raw/main/docs/serving/observability/logging/fluent-bit-collector.yaml
+
 destroy-eventing:
     go run ../cmd/deployer/main.go --action=destroy --image=go-handler-event --name=event-handler --amount=10
     kubectl delete -f manifests/functions/sequence.yaml
@@ -292,10 +376,10 @@ serving-scenario-1:
     go run ../cmd/deployer/main.go --action=delete --image=empty-rust-http --name=empty-rust-http --amount=1
 
     #TYPESCRIPT
-    go run ../cmd/deployer/main.go --action=deploy --image=empty-typescript-http --name=empty-typescript-http --amount=1
+    go run ../cmd/deployer/main.go --action=deploy --image=empty-ts-http --name=empty-ts-http --amount=1
     sleep 10
-    kubectl exec -it $(kubectl get pods -o jsonpath="{.items[0].metadata.name}" -n workload-generator) -n workload-generator -- ./workload-generator --config=serving-scenario-1-typescript.yaml --prefix=serving-scenario-1-typescript
-    go run ../cmd/deployer/main.go --action=delete --image=empty-typescript-http --name=empty-typescript-http --amount=1
+    kubectl exec -it $(kubectl get pods -o jsonpath="{.items[0].metadata.name}" -n workload-generator) -n workload-generator -- ./workload-generator --config=serving-scenario-1-ts.yaml --prefix=serving-scenario-1-ts
+    go run ../cmd/deployer/main.go --action=delete --image=empty-ts-http --name=empty-ts-http --amount=1
 
     # Testing the autoscaling strategy
     go run ../cmd/deployer/main.go --action=deploy --image=empty-go-http --name=empty-go-http --amount=1
@@ -335,7 +419,34 @@ serving-scenario-1:
     kubectl exec -it $(kubectl get pods -o jsonpath="{.items[0].metadata.name}" -n workload-generator) -n workload-generator -- ./workload-generator --config=serving-scenario-1-go.yaml --prefix=serving-scenario-1-go-rps-200
 
 serving-scenario-2:
-    echo "TODO"
+    #!/bin/bash
+    go run ../cmd/deployer/main.go --action=deploy --image=empty-go-http --name=empty-go-http --amount=1
+    go run ../cmd/deployer/main.go --action=deploy --image=empty-python-http --name=empty-python-http --amount=1
+    go run ../cmd/deployer/main.go --action=deploy --image=empty-quarkus-http --name=empty-quarkus-http --amount=1
+    go run ../cmd/deployer/main.go --action=deploy --image=empty-springboot-http --name=empty-springboot-http --amount=1
+    go run ../cmd/deployer/main.go --action=deploy --image=empty-rust-http --name=empty-rust-http --amount=1
+    go run ../cmd/deployer/main.go --action=deploy --image=empty-ts-http --name=empty-ts-http --amount=1
+
+    kubectl patch configmap/config-autoscaler \
+        --namespace knative-serving \
+        --type merge \
+        --patch '{"data":{"scale-to-zero-grace-period":"10s"}}'
+    languages=("go" "python" "quarkus" "springboot" "rust" "ts")
+
+    # execute concurrently on the workload generator
+    pod_name=$(kubectl get pods -o jsonpath="{.items[0].metadata.name}" -n workload-generator)
+    
+    # Launch all workload generators in parallel and store PIDs
+    pids=()
+    for language in "${languages[@]}"; do
+        kubectl exec -it $pod_name -n workload-generator -- ./workload-generator --config=serving-scenario-2-${language}.yaml --prefix=serving-scenario-2-${language} &
+        pids+=($!)
+    done
+
+    # Wait for all processes to complete
+    for pid in "${pids[@]}"; do
+        wait $pid
+    done
 
 extract-logfiles:
     #All the log files are in the /logs directory
@@ -348,17 +459,37 @@ extract-logfiles:
     # Then delete the zip file
     rm ../analysis/logs/logs.tar.gz
 
+extract-eventing-logs:
+    # hostPath:
+    #path: /var/log/reciever-logs
+    # PV:
+    # name: shared-logs
+    #TODO
 
 # lets go with the broker first . broker trigger scenario   
 eventing-broker:
+    #!/bin/bash
     go run ../cmd/deployer/main.go --action=sequence --image=go-handler-event --name=event-handler --amount=10
-    kubectl apply -f https://github.com/knative-extensions/eventing-rabbitmq/releases/download/knative-v1.16.0/rabbitmq-broker.yaml
-    kubectl apply -f manifests/knative/trigger.yaml
     kubectl apply -f manifests/rabbitmq/rabbitmq-cluster.yaml
     kubectl apply -f manifests/knative/rabbitmq-broker-config.yaml
     kubectl apply -f manifests/knative/rabbitmq-broker.yaml
-
-
     go run ../cmd/deployer/main.go --action=deploy --image=cloudevent-reciever --name=reciever --amount=1
     #go run ../cmd/deployer/main.go --action=delete --image=cloudevent-reciever --name=reciever --amount=1
     kubectl apply -f manifests/workload-generator/container-source-1.yaml
+    kubectl delete -f manifests/workload-generator/deployment.yaml
+
+
+    # Define array of trigger amounts to test
+    trigger_amounts=(1 10 20 30 40 50 60 70 80 90 100)
+
+    # Run tests for each trigger amount
+    for amount in "${trigger_amounts[@]}"; do
+        # Deploy triggers
+        go run ../cmd/deployer/main.go --action=trigger --name=reciever --brokerName=rabbitmq-broker --amount=$amount
+        
+        # Run workload generator
+        kubectl exec -it $(kubectl get pods -o jsonpath="{.items[0].metadata.name}" -n workload-generator) -n workload-generator -- ./workload-generator --config=cloudevent.yaml --prefix=eventing-broker-${amount}
+        
+        # Clean up triggers
+        go run ../cmd/deployer/main.go --action=delete-trigger --name=reciever --brokerName=rabbitmq-broker --amount=$amount
+    done

@@ -91,22 +91,19 @@ func (g *generator) run() error {
 				go func(target *config.Target) {
 					efficientLogger := g.logger.With("target", target.URL)
 					defer g.wg.Done()
-					start := time.Now()
-					resp, err := g.Pool.Get(target)
+					metrics, err := g.Pool.Get(target)
 					if err != nil {
 						efficientLogger.Error("Request error", "error", err)
 						return
 					}
-					defer resp.Body.Close()
 					// we expect a boolean response specifying if the function is cold
-					body, err := io.ReadAll(resp.Body)
+					body, err := io.ReadAll(metrics.Response.Body)
 					if err != nil {
 						efficientLogger.Error("Failed to read response body", "error", err)
 						return
 					}
-
-					duration := time.Since(start)
-					efficientLogger.Info("Success", "latency", duration, "status", resp.StatusCode, "isCold", string(body))
+					defer metrics.Response.Body.Close()
+					efficientLogger.Info("Success", "TTFB", metrics.TTFB, "Total", metrics.Total, "isCold", string(body), "status", metrics.Response.StatusCode, "DNS", metrics.DNSTime, "Connect", metrics.ConnectTime, "TLS", metrics.TLSTime)
 					requestCount++
 				}(target)
 			}
@@ -122,12 +119,11 @@ func (g *generator) run() error {
 
 func (g *generator) runMaxThroughput() error {
 	startTime := time.Now()
-	requestCount := 0
 
 	for {
 		select {
 		case <-g.ctx.Done():
-			g.logger.Info("Generator stopped", "totalRequests", requestCount)
+			g.logger.Info("Generator stopped")
 			return nil
 		default:
 			for _, target := range g.cfg.Targets {
@@ -135,31 +131,21 @@ func (g *generator) runMaxThroughput() error {
 				go func(target *config.Target) {
 					efficientLogger := g.logger.With("target", target.URL)
 					defer g.wg.Done()
-					start := time.Now()
-					resp, err := g.Pool.Get(target)
+					metrics, err := g.Pool.Get(target)
 					if err != nil {
 						efficientLogger.Error("Request error", "error", err)
-						requestCount++
 						return
 					}
-					if resp.StatusCode != http.StatusOK {
-						efficientLogger.Error("Request failed", "status", resp.StatusCode)
-						body, err := io.ReadAll(resp.Body)
-						if err != nil {
-							efficientLogger.Error("Failed to read response body", "error", err)
-						}
-						efficientLogger.Error("Non-200 response",
-							"status", resp.StatusCode,
-							"headers", resp.Header,
-							"body", string(body))
-						requestCount++
+					if metrics.Response.StatusCode != http.StatusOK {
+						efficientLogger.Error("Failed", "status", metrics.Response.StatusCode, "TTFB", metrics.TTFB, "Total", metrics.Total, "DNS", metrics.DNSTime, "Connect", metrics.ConnectTime, "TLS", metrics.TLSTime)
 						return
 					}
-					defer resp.Body.Close()
+					body, err := io.ReadAll(metrics.Response.Body)
+					if err != nil {
+						efficientLogger.Error("Failed to read response body", "error", err)
+					}
+					efficientLogger.Info("Success", "TTFB", metrics.TTFB, "Total", metrics.Total, "isCold", string(body), "status", metrics.Response.StatusCode, "DNS", metrics.DNSTime, "Connect", metrics.ConnectTime, "TLS", metrics.TLSTime)
 
-					duration := time.Since(start)
-					efficientLogger.Info("Success", "latency", duration, "status", resp.StatusCode)
-					requestCount++
 				}(target)
 			}
 
@@ -236,19 +222,22 @@ func (c *cloudEventGenerator) run() error {
 			c.wg.Add(1)
 			go func(target *config.Target) {
 				defer c.wg.Done()
-				start := time.Now()
 				// A unique id allows per request comparison
 				// There should be no problem with concurrency here
 				id := strconv.Itoa(int(new(maphash.Hash).Sum64()))
 				c.event.SetID(id)
 
-				resp, err := c.Pool.GenerateCloudEvent(target, c.event)
+				metrics, err := c.Pool.GenerateCloudEvent(target, c.event)
 				if err != nil {
-					efficientLogger.Error("Request error", "error", err)
+					efficientLogger.Error("Failed", "error", err, "TTFB", metrics.TTFB, "Total", metrics.Total, "DNS", metrics.DNSTime, "Connect", metrics.ConnectTime, "TLS", metrics.TLSTime)
 					return
 				}
-				duration := time.Since(start)
-				efficientLogger.Info("Success", "latency", duration, "status", resp.StatusCode, "id", id)
+				body, err := io.ReadAll(metrics.Response.Body)
+				if err != nil {
+					efficientLogger.Error("Failed to read response body", "error", err)
+				}
+				defer metrics.Response.Body.Close()
+				efficientLogger.Info("Success", "TTFB", metrics.TTFB, "Total", metrics.Total, "isCold", string(body), "status", metrics.Response.StatusCode, "DNS", metrics.DNSTime, "Connect", metrics.ConnectTime, "TLS", metrics.TLSTime)
 			}(target)
 		}
 		if c.cfg.Rate.Duration.Duration > 0 && time.Since(startTime) > c.cfg.Rate.Duration.Duration {
