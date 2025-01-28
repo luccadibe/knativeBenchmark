@@ -75,7 +75,7 @@ func deployTrigger(ctx context.Context, k8sClient client.Client, name, brokerNam
 		trigger := &eventingv1.Trigger{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      fmt.Sprintf("%s-trigger-%d", name, i),
-				Namespace: "functions",
+				Namespace: "knative-eventing",
 			},
 			Spec: eventingv1.TriggerSpec{
 				Broker: brokerName,

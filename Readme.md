@@ -434,3 +434,14 @@ todo rn:
 
 run scenarios.
 find a way to persist the logs of the reciever.
+
+
+-> eventlogger is working!!!!!!!!!!
+
+kubectl exec -it -n functions event-logger-6dfb59cb9b-m46lh -- /bin/bash
+
+and then 
+
+cat /data/events.csv
+
+basically what i need to do now is have an automated extraction after running the benchmark.

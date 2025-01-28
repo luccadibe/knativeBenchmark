@@ -1,28 +1,65 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: reciever
+  name: event-logger
   namespace: functions
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: reciever
+      app: event-logger
   template:
     metadata:
       labels:
-        app: reciever
+        app: event-logger
     spec:
       containers:
-        - name: reciever
-          image: luccadibenedetto/cloudevent-reciever:latest
-          ports:
-            - containerPort: 8080
-          volumeMounts:
-            - name: reciever-logs
-              mountPath: /logs
+      - name: event-logger
+        image: luccadibenedetto/eventlogger:latest
+        ports:
+        - containerPort: 8080
+        volumeMounts:
+        - name: events-db
+          mountPath: /data
       volumes:
-        - name: reciever-logs
-          hostPath:
-            path: /var/log/reciever
-            type: DirectoryOrCreate
+      - name: events-db
+        persistentVolumeClaim:
+          claimName: events-db
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: event-logger
+  namespace: functions
+spec:
+  selector:
+    app: event-logger
+  ports:
+  - port: 80
+    targetPort: 8080
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: events-db
+  namespace: functions
+spec:
+  storageClassName: manual
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: /var/log/events-db
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: events-db
+  namespace: functions
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi

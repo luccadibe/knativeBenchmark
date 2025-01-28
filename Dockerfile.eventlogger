@@ -1,0 +1,15 @@
+FROM golang:1.23 AS builder
+
+WORKDIR /app
+COPY . .
+RUN go mod download
+RUN CGO_ENABLED=0 GOOS=linux go build -o eventlogger ./cmd/eventlogger
+
+FROM alpine:3.18
+
+# install bash
+RUN apk add --no-cache bash
+
+WORKDIR /app
+COPY --from=builder /app/eventlogger .
+ENTRYPOINT ["./eventlogger"]

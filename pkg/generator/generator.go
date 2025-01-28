@@ -229,7 +229,18 @@ func (c *cloudEventGenerator) run() error {
 
 				metrics, err := c.Pool.GenerateCloudEvent(target, c.event)
 				if err != nil {
-					efficientLogger.Error("Failed", "error", err, "TTFB", metrics.TTFB, "Total", metrics.Total, "DNS", metrics.DNSTime, "Connect", metrics.ConnectTime, "TLS", metrics.TLSTime)
+					if metrics == nil {
+						efficientLogger.Error("Failed with no metrics", "error", err)
+						return
+					}
+					efficientLogger.Error("Failed",
+						"error", err,
+						"TTFB", metrics.TTFB,
+						"Total", metrics.Total,
+						"DNS", metrics.DNSTime,
+						"Connect", metrics.ConnectTime,
+						"TLS", metrics.TLSTime,
+					)
 					return
 				}
 				body, err := io.ReadAll(metrics.Response.Body)

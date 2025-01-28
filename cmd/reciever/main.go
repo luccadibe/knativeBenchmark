@@ -1,37 +1,28 @@
 package main
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"log/slog"
+	"net/http"
 	"os"
+	"time"
 
 	cloudevents "github.com/cloudevents/sdk-go/v2"
-	"github.com/cloudevents/sdk-go/v2/protocol/http"
+	cehttp "github.com/cloudevents/sdk-go/v2/protocol/http"
 )
 
+type EventLog struct {
+	ID        string    `json:"event_id"`
+	Timestamp time.Time `json:"timestamp"`
+}
+
 func main() {
-	// Set up logging to file
-
-	var handler slog.Handler
-
-	switch os.Getenv("LOG_TO") {
-	case "file":
-		logFile, err := os.OpenFile("/logs/receiver.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
-		if err != nil {
-			slog.Error("Failed to open log file", "error", err)
-			os.Exit(1)
-		}
-		defer logFile.Close()
-		handler = slog.NewJSONHandler(logFile, nil)
-	case "stdout":
-		handler = slog.NewJSONHandler(os.Stdout, nil)
-	}
-
-	logger := slog.New(handler)
+	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	slog.SetDefault(logger)
 
-	// Create CloudEvents client
-	p, err := http.New()
+	p, err := cehttp.New()
 	if err != nil {
 		slog.Error("Failed to create protocol", "error", err)
 		os.Exit(1)
@@ -45,10 +36,32 @@ func main() {
 
 	slog.Info("Starting receiver...")
 
-	// Start receiving events
 	err = c.StartReceiver(context.Background(), func(ctx context.Context, event cloudevents.Event) error {
-		logger.Info("Received event",
-			"event_id", event.ID())
+		// Send event ID to logger service
+		eventLog := EventLog{ID: event.ID()}
+		// time.Now() has nanosecond precision (1e-9 seconds)
+		eventLog.Timestamp = time.Now()
+		jsonData, err := json.Marshal(eventLog)
+		if err != nil {
+			slog.Error("Failed to marshal event", "error", err)
+			return err
+		}
+
+		resp, err := http.Post("http://event-logger.functions.svc.cluster.local/log",
+			"application/json",
+			bytes.NewBuffer(jsonData))
+		if err != nil {
+			slog.Error("Failed to log event", "error", err)
+			return err
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			slog.Error("Failed to log event", "status", resp.StatusCode)
+			return err
+		}
+
+		slog.Info("Logged event", "event_id", event.ID())
 		return nil
 	})
 
