@@ -25,12 +25,22 @@ data:
     @INCLUDE input-forward.conf
     @INCLUDE filter-simplify.conf
     @INCLUDE output-files.conf
-
+    @INCLUDE input-kubernetes.conf
   input-forward.conf: |
     [INPUT]
         Name              forward
         Port              ${FLUENT_PORT}
 
+  input-kubernetes.conf: |
+    [INPUT]
+        Name              tail
+        Tag               kube.*
+        Path              /var/log/containers/*.log
+        Parser            docker
+        DB                /var/log/flb_kube.db
+        Mem_Buf_Limit     5MB
+        Skip_Long_Lines   On
+        Refresh_Interval  10
   # This filter simplifies the fluentbit "tag" which is used to choose the
   # output filename. First match Knative services, then match pods with an "app"
   # label, then use the pod name.
@@ -165,4 +175,4 @@ spec:
       volumeName: shared-logs
       resources:
         requests:
-          storage: 40Gi
+          storage: 4Gi

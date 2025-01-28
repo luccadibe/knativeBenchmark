@@ -434,12 +434,3 @@ todo rn:
 
 run scenarios.
 find a way to persist the logs of the reciever.
-
-
-run on 27.01
-knative is on nodes-europe-west1-b-n6qn 
-
-workload generator is on nodes-europe-west1-b-95qf 
-
-functions
-nodes-europe-west1-b-sct6 

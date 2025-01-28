@@ -5,10 +5,11 @@ metadata:
   namespace: knative-eventing
 spec:
   broker: rabbitmq-broker
+
   subscriber:
     ref:
       apiVersion: serving.knative.dev/v1
       kind: Service
-      name: reciever
+      name: reciever-0
       namespace: functions
     #uri: http://reciever.functions.svc.cluster.local:8080
