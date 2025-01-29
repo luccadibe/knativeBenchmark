@@ -60,6 +60,7 @@ func main() {
 		mu.Lock()
 		err := writer.Write([]string{
 			event.ID,
+			// Format with milisecond precision
 			event.Timestamp.Format(time.RFC3339Nano),
 		})
 		if err != nil {

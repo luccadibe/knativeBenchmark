@@ -46,7 +46,7 @@ func (d *Duration) UnmarshalYAML(unmarshal func(interface{}) error) error {
 }
 
 type Rate struct {
-	RequestsPerSecond   int           `yaml:"requestsPerSecond"`
+	RequestsPerSecond   float64       `yaml:"requestsPerSecond"`
 	Duration            Duration      `yaml:"duration"`
 	MaxIdleConns        int           `yaml:"maxIdleConns"`
 	MaxIdleConnsPerHost int           `yaml:"maxIdleConnsPerHost"`

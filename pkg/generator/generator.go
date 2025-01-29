@@ -67,7 +67,7 @@ func (g *generator) run() error {
 		return g.runMaxThroughput()
 	}
 
-	interval := time.Second / time.Duration(g.cfg.Rate.RequestsPerSecond)
+	interval := time.Duration(float64(time.Second) / g.cfg.Rate.RequestsPerSecond)
 	g.logger.Info("Calculated ticker interval", "interval", interval)
 
 	ticker := time.NewTicker(interval)
@@ -206,7 +206,7 @@ func (c *cloudEventGenerator) run() error {
 	c.logger.Info("Starting workload generation", "rate", c.cfg.Rate.RequestsPerSecond)
 	c.logger.Info("Using cloudevent", "event", c.event)
 
-	interval := time.Second / time.Duration(c.cfg.Rate.RequestsPerSecond)
+	interval := time.Duration(float64(time.Second) / c.cfg.Rate.RequestsPerSecond)
 	c.logger.Info("Calculated ticker interval", "interval", interval)
 
 	ticker := time.NewTicker(interval)
@@ -234,6 +234,7 @@ func (c *cloudEventGenerator) run() error {
 						return
 					}
 					efficientLogger.Error("Failed",
+						"id", id,
 						"error", err,
 						"TTFB", metrics.TTFB,
 						"Total", metrics.Total,
@@ -248,7 +249,7 @@ func (c *cloudEventGenerator) run() error {
 					efficientLogger.Error("Failed to read response body", "error", err)
 				}
 				defer metrics.Response.Body.Close()
-				efficientLogger.Info("Success", "TTFB", metrics.TTFB, "Total", metrics.Total, "isCold", string(body), "status", metrics.Response.StatusCode, "DNS", metrics.DNSTime, "Connect", metrics.ConnectTime, "TLS", metrics.TLSTime)
+				efficientLogger.Info("Success", "id", id, "TTFB", metrics.TTFB, "Total", metrics.Total, "isCold", string(body), "status", metrics.Response.StatusCode, "DNS", metrics.DNSTime, "Connect", metrics.ConnectTime, "TLS", metrics.TLSTime)
 			}(target)
 		}
 		if c.cfg.Rate.Duration.Duration > 0 && time.Since(startTime) > c.cfg.Rate.Duration.Duration {

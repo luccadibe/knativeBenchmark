@@ -101,7 +101,7 @@ func deleteTrigger(ctx context.Context, k8sClient client.Client, name, brokerNam
 		trigger := &eventingv1.Trigger{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      fmt.Sprintf("%s-trigger-%d", name, i),
-				Namespace: "functions",
+				Namespace: "knative-eventing",
 			},
 		}
 		if err := k8sClient.Delete(ctx, trigger); err != nil {

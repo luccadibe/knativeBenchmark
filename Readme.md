@@ -445,3 +445,21 @@ and then
 cat /data/events.csv
 
 basically what i need to do now is have an automated extraction after running the benchmark.
+
+-> the random id generation is producing collisions. FIX!!!!!!!!!!!!
+maybe pregenerate the ids? the issue is concurrency .
+-> i tested with 10M ids and it worked fine, no collisions.
+So Maybe the issue is that the events are being processed or sent multiple times.
+
+Lol actually its surely because we have multiple triggers.
+So in theory each event would be processed n times where n is the number of triggers.
+
+attach "metrics.db" as db2;
+CREATE TABLE node_metrics as select * from db2.node_metrics;
+CREATE TABLE pod_metrics as select * from db2.pod_metrics;
+
+
+
+
+
+

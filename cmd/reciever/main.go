@@ -60,8 +60,6 @@ func main() {
 			slog.Error("Failed to log event", "status", resp.StatusCode)
 			return err
 		}
-
-		slog.Info("Logged event", "event_id", event.ID())
 		return nil
 	})
 

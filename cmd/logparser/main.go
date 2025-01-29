@@ -30,14 +30,16 @@ type experimentInfo struct {
 }
 
 type request struct {
-	timestamp time.Time
-	status    int
-	ttfb      float64
-	total     float64
-	isCold    bool
-	dns       float64
-	connect   float64
-	tls       float64
+	timestamp    time.Time
+	eventid      string
+	status       int
+	ttfb         float64
+	total        float64
+	isCold       bool
+	dns          float64
+	connect      float64
+	tls          float64
+	errorMessage string
 }
 
 type processingStats struct {
@@ -97,34 +99,37 @@ func initDB(dbPath string) *sql.DB {
 	}
 
 	_, err = db.Exec(`
-		CREATE TABLE IF NOT EXISTS experiments (
-			id INTEGER PRIMARY KEY,
-			timestamp DATETIME NOT NULL,
-			language TEXT NOT NULL,
-			scenario TEXT NOT NULL,
-			concurrency INTEGER,
-			rps INTEGER,
-			requests_per_second INTEGER,
-			duration TEXT,
-			max_idle_conns INTEGER,
-			max_idle_conns_per_host INTEGER,
-			idle_conn_timeout TEXT,
-			timeout TEXT
-		);
+        CREATE TABLE IF NOT EXISTS experiments (
+            id INTEGER PRIMARY KEY,
+            timestamp DATETIME NOT NULL,
+            language TEXT NOT NULL,
+            scenario TEXT NOT NULL,
+            concurrency INTEGER,
+            rps INTEGER,
+            requests_per_second INTEGER,
+            duration TEXT,
+            max_idle_conns INTEGER,
+            max_idle_conns_per_host INTEGER,
+            idle_conn_timeout TEXT,
+            timeout TEXT,
+            triggers INTEGER
+        );
 
 		CREATE TABLE IF NOT EXISTS requests (
-			id INTEGER PRIMARY KEY,
-			experiment_id INTEGER NOT NULL,
-			timestamp DATETIME NOT NULL,
-			status INTEGER NOT NULL,
-			ttfb REAL NOT NULL,
-			total_time REAL NOT NULL,
-			is_cold BOOLEAN NOT NULL,
-			dns_time REAL NOT NULL,
-			connect_time REAL NOT NULL,
-			tls_time REAL NOT NULL,
-			FOREIGN KEY(experiment_id) REFERENCES experiments(id)
-		);
+            id INTEGER PRIMARY KEY,
+            experiment_id INTEGER NOT NULL,
+            timestamp DATETIME NOT NULL,
+            status INTEGER NOT NULL,
+            ttfb REAL NOT NULL,
+            total_time REAL NOT NULL,
+            is_cold BOOLEAN NOT NULL,
+            dns_time REAL NOT NULL,
+            connect_time REAL NOT NULL,
+            tls_time REAL NOT NULL,
+            error_message TEXT,
+			event_id TEXT,
+            FOREIGN KEY(experiment_id) REFERENCES experiments(id)
+        );
 	`)
 	if err != nil {
 		log.Fatal(err)
@@ -200,6 +205,20 @@ func parseFilename(filename string) (*experimentInfo, error) {
 		return nil, fmt.Errorf("parsing timestamp: %w", err)
 	}
 
+	// Handle eventing scenario format
+	if strings.HasPrefix(parts[0], "eventing-broker-") {
+		triggerCount, err := strconv.Atoi(strings.TrimPrefix(parts[0], "eventing-broker-"))
+		if err != nil {
+			return nil, fmt.Errorf("parsing trigger count: %w", err)
+		}
+		return &experimentInfo{
+			timestamp: timestamp.UTC(),
+			language:  "", // Not applicable for eventing
+			scenario:  "eventing",
+			params:    map[string]int{"triggers": triggerCount},
+		}, nil
+	}
+
 	prefix := strings.Join(parts[:len(parts)-2], "_")
 	segments := strings.Split(prefix, "-")[1:] // Skip "serving"
 
@@ -250,7 +269,7 @@ func processFile(path string) (map[string]interface{}, []request, error) {
 	var requests []request
 
 	for _, line := range lines[2:] {
-		if strings.Contains(line, `msg=Success`) {
+		if strings.Contains(line, `msg=Success`) || strings.Contains(line, `msg=Failed`) {
 			req, err := parseRequest(line)
 			if err == nil {
 				requests = append(requests, req)
@@ -309,6 +328,14 @@ func parseRequest(line string) (request, error) {
 	req.connect = parseDuration(pairs["Connect"])
 	req.tls = parseDuration(pairs["TLS"])
 
+	if pairs["msg"] == "Failed" {
+		req.errorMessage = pairs["error"]
+	}
+
+	if s, ok := pairs["id"]; ok {
+		req.eventid = s
+	}
+
 	return req, nil
 }
 
@@ -336,11 +363,12 @@ func parseDuration(s string) float64 {
 
 func insertExperiment(db *sql.DB, exp *experimentInfo, config map[string]interface{}) (int64, error) {
 	stmt := `
-		INSERT INTO experiments (
-			timestamp, language, scenario, concurrency, rps,
-			requests_per_second, duration, max_idle_conns,
-			max_idle_conns_per_host, idle_conn_timeout, timeout
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        INSERT INTO experiments (
+            timestamp, language, scenario, concurrency, rps,
+            requests_per_second, duration, max_idle_conns,
+            max_idle_conns_per_host, idle_conn_timeout, timeout,
+            triggers
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
 	args := []interface{}{
 		exp.timestamp.Format(time.RFC3339),
@@ -354,6 +382,7 @@ func insertExperiment(db *sql.DB, exp *experimentInfo, config map[string]interfa
 		config["max_idle_conns_per_host"],
 		config["idle_conn_timeout"],
 		config["timeout"],
+		exp.params["triggers"],
 	}
 
 	res, err := db.Exec(stmt, args...)
@@ -372,11 +401,11 @@ func insertRequests(db *sql.DB, expID int64, requests []request) error {
 	defer tx.Rollback()
 
 	stmt, err := tx.Prepare(`
-		INSERT INTO requests (
-			experiment_id, timestamp, status, ttfb, total_time,
-			is_cold, dns_time, connect_time, tls_time
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`)
+        INSERT INTO requests (
+            experiment_id, timestamp, status, ttfb, total_time,
+            is_cold, dns_time, connect_time, tls_time, error_message, event_id
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `)
 	if err != nil {
 		return err
 	}
@@ -393,6 +422,8 @@ func insertRequests(db *sql.DB, expID int64, requests []request) error {
 			req.dns,
 			req.connect,
 			req.tls,
+			req.errorMessage,
+			req.eventid,
 		)
 		if err != nil {
 			return err
