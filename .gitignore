@@ -58,3 +58,9 @@ Thumbs.db
 # Dependencies
 vendor/
 node_modules/ 
+
+# .db files
+*.db
+
+# .csv files
+*.csv

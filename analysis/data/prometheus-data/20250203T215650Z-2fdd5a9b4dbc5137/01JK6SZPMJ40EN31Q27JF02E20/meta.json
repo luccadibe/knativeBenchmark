@@ -1,0 +1,17 @@
+{
+	"ulid": "01JK6SZPMJ40EN31Q27JF02E20",
+	"minTime": 1738605792066,
+	"maxTime": 1738612800000,
+	"stats": {
+		"numSamples": 19258388,
+		"numSeries": 70430,
+		"numChunks": 157657
+	},
+	"compaction": {
+		"level": 1,
+		"sources": [
+			"01JK6SZPMJ40EN31Q27JF02E20"
+		]
+	},
+	"version": 1
+}

@@ -1,0 +1,21 @@
+targets:
+  - url: "http://empty-go-0.functions.svc.cluster.local"
+    weight: 1
+    headers:
+      Content-Type: "text/plain"
+      ce-specversion: "1.0"
+      ce-type: "example"
+      ce-id: "1234-1234-1234"
+      ce-source: "event-source"
+    body: '0'
+rate:
+  requestsPerSecond: 600
+  duration: 2m
+
+  maxIdleConns: 100
+  maxIdleConnsPerHost: 100
+  idleConnTimeout: 90s
+  timeout: 30s
+
+store:
+  logDirPath: "/logs" 

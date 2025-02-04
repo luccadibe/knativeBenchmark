@@ -40,6 +40,7 @@ type request struct {
 	connect      float64
 	tls          float64
 	errorMessage string
+	target       string
 }
 
 type processingStats struct {
@@ -56,6 +57,7 @@ var knownLanguages = map[string]bool{
 	"ts":         true,
 	"quarkus":    true,
 	"springboot": true,
+	"all":        true,
 }
 
 var (
@@ -85,7 +87,7 @@ func parseFlags() config {
 	c := config{}
 	flag.StringVar(&c.dbPath, "db", "benchmark.db", "SQLite database path")
 	flag.StringVar(&c.logDir, "logs", "./logs", "Log directory path")
-	timeWindow := flag.Int("hours", 10, "Processing time window in hours")
+	timeWindow := flag.Int("hours", 24, "Processing time window in hours")
 	flag.Parse()
 
 	c.timeWindow = time.Duration(*timeWindow) * time.Hour
@@ -112,7 +114,8 @@ func initDB(dbPath string) *sql.DB {
             max_idle_conns_per_host INTEGER,
             idle_conn_timeout TEXT,
             timeout TEXT,
-            triggers INTEGER
+            triggers INTEGER,
+			workers INTEGER
         );
 
 		CREATE TABLE IF NOT EXISTS requests (
@@ -128,6 +131,7 @@ func initDB(dbPath string) *sql.DB {
             tls_time REAL NOT NULL,
             error_message TEXT,
 			event_id TEXT,
+			target TEXT,
             FOREIGN KEY(experiment_id) REFERENCES experiments(id)
         );
 	`)
@@ -197,6 +201,7 @@ func parseFilename(filename string) (*experimentInfo, error) {
 		return nil, fmt.Errorf("invalid filename format")
 	}
 
+	// Handle timestamp which is always the last two parts
 	timestamp, err := time.Parse(
 		"2006-01-02 15-04-05",
 		fmt.Sprintf("%s %s", parts[len(parts)-2], parts[len(parts)-1]),
@@ -205,53 +210,73 @@ func parseFilename(filename string) (*experimentInfo, error) {
 		return nil, fmt.Errorf("parsing timestamp: %w", err)
 	}
 
-	// Handle eventing scenario format
-	if strings.HasPrefix(parts[0], "eventing-broker-") {
-		triggerCount, err := strconv.Atoi(strings.TrimPrefix(parts[0], "eventing-broker-"))
-		if err != nil {
-			return nil, fmt.Errorf("parsing trigger count: %w", err)
+	// Remove timestamp parts for easier parsing of the rest
+	log.Printf("processing : %v", parts)
+	parts = parts[:len(parts)-2]
+	// Handle eventing scenarios
+	if strings.HasPrefix(parts[0], "eventing") {
+		scenario := parts[0]
+		params := make(map[string]int)
+
+		for _, part := range parts[1:] {
+			if strings.HasSuffix(part, "rps") {
+				val, err := strconv.Atoi(strings.TrimSuffix(part, "rps"))
+				if err != nil {
+					return nil, fmt.Errorf("parsing rps: %w", err)
+				}
+				params["rps"] = val
+			}
+			if strings.HasSuffix(part, "triggers") {
+				val, err := strconv.Atoi(strings.TrimSuffix(part, "triggers"))
+				if err != nil {
+					return nil, fmt.Errorf("parsing triggers: %w", err)
+				}
+				params["triggers"] = val
+			}
+			if strings.HasSuffix(part, "workers") {
+				val, err := strconv.Atoi(strings.TrimSuffix(part, "workers"))
+				if err != nil {
+					return nil, fmt.Errorf("parsing workers: %w", err)
+				}
+				params["workers"] = val
+			}
 		}
+
 		return &experimentInfo{
 			timestamp: timestamp.UTC(),
-			language:  "", // Not applicable for eventing
-			scenario:  "eventing",
-			params:    map[string]int{"triggers": triggerCount},
+			language:  "",
+			scenario:  scenario,
+			params:    params,
 		}, nil
 	}
 
-	prefix := strings.Join(parts[:len(parts)-2], "_")
-	segments := strings.Split(prefix, "-")[1:] // Skip "serving"
+	// Handle serving scenarios
+	if strings.HasPrefix(parts[0], "serving") {
+		scenario := parts[0]
+		params := make(map[string]int)
+		var language string
 
-	var language string
-	var scenarioParts []string
-	params := make(map[string]int)
-
-	for i, seg := range segments {
-		if knownLanguages[seg] {
-			language = seg
-			scenarioParts = segments[:i]
-			paramParts := segments[i+1:]
-			for j := 0; j < len(paramParts); j += 2 {
-				if j+1 >= len(paramParts) {
-					break
+		for _, part := range parts[1:] {
+			if strings.HasSuffix(part, "rps") {
+				val, err := strconv.Atoi(strings.TrimSuffix(part, "rps"))
+				if err != nil {
+					return nil, fmt.Errorf("parsing rps: %w", err)
 				}
-				val, _ := strconv.Atoi(paramParts[j+1])
-				params[paramParts[j]] = val
+				params["rps"] = val
+			} else if knownLanguages[part] {
+				language = part
 			}
-			break
 		}
+
+		return &experimentInfo{
+			timestamp: timestamp.UTC(),
+			language:  language,
+			scenario:  scenario,
+			params:    params,
+		}, nil
 	}
 
-	if language == "" {
-		return nil, fmt.Errorf("language not found in filename")
-	}
-
-	return &experimentInfo{
-		timestamp: timestamp.UTC(),
-		language:  language,
-		scenario:  strings.Join(scenarioParts, "-"),
-		params:    params,
-	}, nil
+	return nil, fmt.Errorf("unrecognized filename format")
 }
 
 func processFile(path string) (map[string]interface{}, []request, error) {
@@ -321,7 +346,22 @@ func parseRequest(line string) (request, error) {
 		req.status = status
 	}
 
-	req.isCold = pairs["isCold"] == "true"
+	if t, ok := pairs["target"]; ok {
+		req.target = t
+	}
+
+	if cold, ok := pairs["isCold"]; ok {
+		// First remove escaped quotes if they exist
+		cold = strings.ReplaceAll(cold, `\"`, "")
+		// Then remove any remaining quotes
+		cold = strings.Trim(cold, `"`)
+		// Convert to lowercase
+		cold = strings.ToLower(cold)
+		// Log the value for debugging
+		//log.Printf("Processing isCold - original: %q, cleaned: %q", pairs["isCold"], cold)
+		req.isCold = cold == "true"
+	}
+
 	req.ttfb = parseDuration(pairs["TTFB"])
 	req.total = parseDuration(pairs["Total"])
 	req.dns = parseDuration(pairs["DNS"])
@@ -341,18 +381,22 @@ func parseRequest(line string) (request, error) {
 
 func parseKeyValuePairs(line string) map[string]string {
 	result := make(map[string]string)
-	re := regexp.MustCompile(`(\w+)=("[^"]*"|\S+)`)
+	// Modified regex to better handle escaped quotes
+	re := regexp.MustCompile(`(\w+)=((?:"\\+"[^"]*\\+""|"[^"]*"|[^"\s]+))`)
 	matches := re.FindAllStringSubmatch(line, -1)
 
 	for _, m := range matches {
 		key := m[1]
-		value := strings.Trim(m[2], `"`)
+		value := m[2]
+		// Don't trim quotes here, let the individual parsers handle it
 		result[key] = value
 	}
 
 	return result
 }
 
+// parseDuration converts a duration string to milliseconds by parsing it into a time.Duration
+// and converting nanoseconds to milliseconds (dividing by 1e6)
 func parseDuration(s string) float64 {
 	d, err := time.ParseDuration(s)
 	if err != nil {
@@ -367,8 +411,8 @@ func insertExperiment(db *sql.DB, exp *experimentInfo, config map[string]interfa
             timestamp, language, scenario, concurrency, rps,
             requests_per_second, duration, max_idle_conns,
             max_idle_conns_per_host, idle_conn_timeout, timeout,
-            triggers
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+            triggers, workers
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
 
 	args := []interface{}{
 		exp.timestamp.Format(time.RFC3339),
@@ -383,6 +427,7 @@ func insertExperiment(db *sql.DB, exp *experimentInfo, config map[string]interfa
 		config["idle_conn_timeout"],
 		config["timeout"],
 		exp.params["triggers"],
+		exp.params["workers"],
 	}
 
 	res, err := db.Exec(stmt, args...)
@@ -403,8 +448,8 @@ func insertRequests(db *sql.DB, expID int64, requests []request) error {
 	stmt, err := tx.Prepare(`
         INSERT INTO requests (
             experiment_id, timestamp, status, ttfb, total_time,
-            is_cold, dns_time, connect_time, tls_time, error_message, event_id
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            is_cold, dns_time, connect_time, tls_time, error_message, event_id, target
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `)
 	if err != nil {
 		return err
@@ -424,6 +469,7 @@ func insertRequests(db *sql.DB, expID int64, requests []request) error {
 			req.tls,
 			req.errorMessage,
 			req.eventid,
+			req.target,
 		)
 		if err != nil {
 			return err

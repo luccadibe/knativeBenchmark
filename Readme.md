@@ -458,8 +458,63 @@ attach "metrics.db" as db2;
 CREATE TABLE node_metrics as select * from db2.node_metrics;
 CREATE TABLE pod_metrics as select * from db2.pod_metrics;
 
+-> todo: 
+- store the prometheus metrics and analyse ALMOST DONE
+- try scenario 3 with 100 rps and then decide how much rps we do for the final benchmark.
+    container concurrency patch is working but the function is not recieving the concurrency 1 - still at 0..
+    i manually set the concurrency to 1 in the ksvc, then ran with 100 rps. I only saw 4 deployments. weird af
+- for serving scenario 1, im thinking 1100 rps + 1300 rps + 1500 rps
+- Run the benchmarks
+- MAKE SURE THE KOURIER IS RUNNING ON THE SAME NODE AS KNATIVE! DONE
+
+
+ - analysis : make sure to parse the time right. convert to the same unit.
+for report:
+preliminary benchmark runs showed that already with 10 triggers the eventing system was not able to handle the load.
 
 
 
 
 
+# Testing the autoscaling strategy
+    go run ../cmd/deployer/main.go --action=deploy --image=empty-go-http --name=empty-go-http --amount=1
+    sleep 10
+    go run ../cmd/deployer/main.go --action=patch --name=empty-go-http-0 --metric=concurrency --target=20
+    kubectl exec -it $(kubectl get pods -o jsonpath="{.items[0].metadata.name}" -n workload-generator) -n workload-generator -- ./workload-generator --config=serving-scenario-1-go.yaml --prefix=serving-scenario-1-go-concurrency-20
+    go run ../cmd/deployer/main.go --action=patch --name=empty-go-http-0 --metric=concurrency --target=40
+    sleep 10
+    kubectl exec -it $(kubectl get pods -o jsonpath="{.items[0].metadata.name}" -n workload-generator) -n workload-generator -- ./workload-generator --config=serving-scenario-1-go.yaml --prefix=serving-scenario-1-go-concurrency-40
+    
+    go run ../cmd/deployer/main.go --action=patch --name=empty-go-http-0 --metric=concurrency --target=60
+    sleep 10
+    kubectl exec -it $(kubectl get pods -o jsonpath="{.items[0].metadata.name}" -n workload-generator) -n workload-generator -- ./workload-generator --config=serving-scenario-1-go.yaml --prefix=serving-scenario-1-go-concurrency-60
+
+    go run ../cmd/deployer/main.go --action=patch --name=empty-go-http-0 --metric=concurrency --target=80
+    sleep 10
+    kubectl exec -it $(kubectl get pods -o jsonpath="{.items[0].metadata.name}" -n workload-generator) -n workload-generator -- ./workload-generator --config=serving-scenario-1-go.yaml --prefix=serving-scenario-1-go-concurrency-80
+
+    go run ../cmd/deployer/main.go --action=patch --name=empty-go-http-0 --metric=concurrency --target=100
+    sleep 10
+    kubectl exec -it $(kubectl get pods -o jsonpath="{.items[0].metadata.name}" -n workload-generator) -n workload-generator -- ./workload-generator --config=serving-scenario-1-go.yaml --prefix=serving-scenario-1-go-concurrency-100
+
+    go run ../cmd/deployer/main.go --action=patch --name=empty-go-http-0 --metric=rps --target=50
+    sleep 10
+    kubectl exec -it $(kubectl get pods -o jsonpath="{.items[0].metadata.name}" -n workload-generator) -n workload-generator -- ./workload-generator --config=serving-scenario-1-go.yaml --prefix=serving-scenario-1-go-rps-50
+
+    go run ../cmd/deployer/main.go --action=patch --name=empty-go-http-0 --metric=rps --target=100
+    sleep 10
+    kubectl exec -it $(kubectl get pods -o jsonpath="{.items[0].metadata.name}" -n workload-generator) -n workload-generator -- ./workload-generator --config=serving-scenario-1-go.yaml --prefix=serving-scenario-1-go-rps-100
+
+    go run ../cmd/deployer/main.go --action=patch --name=empty-go-http-0 --metric=rps --target=150
+    sleep 10
+    kubectl exec -it $(kubectl get pods -o jsonpath="{.items[0].metadata.name}" -n workload-generator) -n workload-generator -- ./workload-generator --config=serving-scenario-1-go.yaml --prefix=serving-scenario-1-go-rps-150
+
+    go run ../cmd/deployer/main.go --action=patch --name=empty-go-http-0 --metric=rps --target=200
+    sleep 10
+    kubectl exec -it $(kubectl get pods -o jsonpath="{.items[0].metadata.name}" -n workload-generator) -n workload-generator -- ./workload-generator --config=serving-scenario-1-go.yaml --prefix=serving-scenario-1-go-rps-200
+
+on 03.02.2025:
+i ran the eventing scenario 2 where the logfiles will contain a number of triggers that is wrong.
+we used just one trigger and variable rps.
+workers = 10.
+this means i can treat it as 4 runs of the same scenario.

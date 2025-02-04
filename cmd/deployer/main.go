@@ -4,6 +4,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"strconv"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -19,13 +20,14 @@ import (
 )
 
 func main() {
-	action := flag.String("action", "deploy", "Action to perform: deploy, delete, sequence, broker, trigger, delete-trigger")
+	action := flag.String("action", "deploy", "Action to perform: deploy, delete, sequence, broker, trigger, delete-trigger, patch-trigger")
 	name := flag.String("name", "empty-go", "Name of the function")
 	image := flag.String("image", "empty-go", "Image to deploy")
 	amount := flag.Int("amount", 1, "Amount of functions/triggers to deploy")
 	brokerName := flag.String("broker", "default", "Name of the broker to use")
 	metric := flag.String("metric", "concurrency", "Autoscaling strategy to use")
 	target := flag.String("target", "80", "Target value for autoscaling")
+	parallelism := flag.Int("parallelism", 10, "Parallelism for the trigger")
 	flag.Parse()
 	vMap := make(map[string]string)
 	vMap["metric"] = *metric
@@ -64,8 +66,35 @@ func main() {
 		deployTrigger(ctx, k8sClient, *name, *brokerName, *amount)
 	case "delete-trigger":
 		deleteTrigger(ctx, k8sClient, *name, *brokerName, *amount)
+	case "patch-trigger":
+		patchTrigger(ctx, k8sClient, *name, *brokerName, *parallelism)
 	default:
 		fmt.Println("Invalid action.")
+	}
+}
+
+func patchTrigger(ctx context.Context, k8sClient client.Client, name, brokerName string, parallelism int) {
+	// First get the existing trigger
+	existingTrigger := &eventingv1.Trigger{}
+	if err := k8sClient.Get(ctx, client.ObjectKey{
+		Name:      name,
+		Namespace: "knative-eventing",
+	}, existingTrigger); err != nil {
+		fmt.Printf("Failed to get existing trigger %s: %v\n", name, err)
+		return
+	}
+
+	// Update the existing trigger's annotations
+	if existingTrigger.Annotations == nil {
+		existingTrigger.Annotations = make(map[string]string)
+	}
+	existingTrigger.Annotations["rabbitmq.eventing.knative.dev/parallelism"] = strconv.Itoa(parallelism)
+
+	// Update the trigger
+	if err := k8sClient.Update(ctx, existingTrigger); err != nil {
+		fmt.Printf("Failed to patch trigger %s: %v\n", name, err)
+	} else {
+		fmt.Printf("Successfully updated trigger %s with parallelism %d\n", name, parallelism)
 	}
 }
 
@@ -76,6 +105,9 @@ func deployTrigger(ctx context.Context, k8sClient client.Client, name, brokerNam
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      fmt.Sprintf("%s-trigger-%d", name, i),
 				Namespace: "knative-eventing",
+				Annotations: map[string]string{
+					"rabbitmq.eventing.knative.dev/parallelism": "10",
+				},
 			},
 			Spec: eventingv1.TriggerSpec{
 				Broker: brokerName,
@@ -268,7 +300,7 @@ func createKnativeService(name string, image string) *servingv1.Service {
 						},
 						Annotations: map[string]string{
 							"autoscaling.knative.dev/metric":                        "concurrency",
-							"autoscaling.knative.dev/target-utilization-percentage": "10",
+							"autoscaling.knative.dev/target-utilization-percentage": "70",
 						},
 					},
 					Spec: servingv1.RevisionSpec{
@@ -304,7 +336,6 @@ func createKnativeService(name string, image string) *servingv1.Service {
 	}
 }
 
-// Helper function to create pointers to basic types
 func ptr[T any](v T) *T {
 	return &v
 }

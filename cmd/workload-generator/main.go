@@ -15,6 +15,7 @@ import (
 func main() {
 
 	configPath := flag.String("config", "config.yaml", "path to config file")
+	rps := flag.Float64("rps", 0, "replace config rps with another value")
 	pingEndpoints := flag.Bool("ping", false, "ping endpoints")
 	devMode := flag.Bool("dev", false, "development mode - use localhost:8080")
 	cloudEventMode := flag.Bool("event", false, "cloud event mode - generate cloud events")
@@ -28,6 +29,11 @@ func main() {
 	cfg, err := config.Load(*configPath, *devMode)
 	if err != nil {
 		logger.Error("Failed to load config", "error", err)
+	}
+
+	if *rps > 0 {
+		cfg.Rate.RequestsPerSecond = *rps
+		logger.Info("Overriding RPS", "rps", *rps)
 	}
 	logger.Info("Loaded configuration", "config", cfg)
 

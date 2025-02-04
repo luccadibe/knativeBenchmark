@@ -2,9 +2,10 @@ kube-state-metrics:
   metricLabelsAllowlist:
     - pods=[*]
     - deployments=[app.kubernetes.io/name,app.kubernetes.io/component,app.kubernetes.io/instance]
-# Prometheus specific configuration
+
 prometheus:
   prometheusSpec:
+    enableAdminAPI: true
     serviceMonitorSelectorNilUsesHelmValues: false
     podMonitorSelectorNilUsesHelmValues: false
     nodeSelector:
@@ -14,10 +15,11 @@ prometheus:
         operator: "Equal"
         value: "metrics"
         effect: "NoSchedule"
-server:
-  persistentVolume:
-    enabled: true
-    size: 10Gi
-    selector:
-      matchLabels:
-        app: prometheus
+    storage:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: standard-rwo
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 5Gi

@@ -12,7 +12,7 @@ targets:
 
 rate:
   requestsPerSecond: 100
-  duration: 5m
+  duration: 2m
   
   # HTTP client settings
   maxIdleConns: 100

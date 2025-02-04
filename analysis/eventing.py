@@ -5,7 +5,7 @@ import seaborn as sns
 from datetime import datetime
 
 # Connect to the database
-conn = sqlite3.connect('benchmark.db')
+conn = sqlite3.connect('data/benchmark-1738536074.db')
 
 # Query for requests data
 requests_query = """
@@ -14,6 +14,7 @@ SELECT
     e.scenario,
     e.triggers,
     r.status,
+    e.rps,
     r.ttfb,
     r.timestamp,
     r.event_id
@@ -46,10 +47,14 @@ FROM pod_metrics
 ORDER BY timestamp
 """
 
-# Events data is stored in ./logs/events.csv
-# columns are event_id,timestamp
-# example: 7304328921599469878,2025-01-29T13:43:37.792661715Z
-events_df = pd.read_csv('./logs/events.csv', names=['event_id', 'timestamp'], header=0)
+events_query = """
+SELECT 
+    event_id,
+    timestamp
+FROM events
+"""
+
+events_df = pd.read_sql_query(events_query, conn)
 events_df['event_id'] = events_df['event_id'].astype(str)
 events_df['timestamp'] = pd.to_datetime(events_df['timestamp'], format='%Y-%m-%dT%H:%M:%S.%fZ').dt.tz_localize('UTC')
 
@@ -59,7 +64,7 @@ requests_df['event_id'] = requests_df['event_id'].astype(str)
 requests_df['timestamp'] = pd.to_datetime(requests_df['timestamp'], format='ISO8601')
 
 
-node_metrics_df = pd.read_sql_query(node_metrics_query, conn)
+""" node_metrics_df = pd.read_sql_query(node_metrics_query, conn)
 node_metrics_df['timestamp'] = pd.to_datetime(node_metrics_df['timestamp'], format='ISO8601')
 node_metrics_df['timestamp'] = node_metrics_df['timestamp'].dt.tz_convert('UTC')
 
@@ -69,7 +74,7 @@ pod_metrics_df['timestamp'] = pod_metrics_df['timestamp'].dt.tz_convert('UTC')
 
 print(f"\n Node metrics going from {node_metrics_df['timestamp'].min()} to {node_metrics_df['timestamp'].max()}")
 print(f"\n Requests going from {requests_df['timestamp'].min()} to {requests_df['timestamp'].max()}")
-print(f"\n Amount of requests: {requests_df.shape[0]}")
+print(f"\n Amount of requests: {requests_df.shape[0]}") """
 
 # Calculate summary statistics for TTFB grouped by triggers
 summary_ttfb = requests_df.groupby(
@@ -222,13 +227,9 @@ def requests_node_metrics_plot():
     lines2, labels2 = ax2.get_legend_handles_labels()
     ax1.legend(lines1 + lines2, labels1 + labels2, loc='upper left')
     
-    # Adjust layout to prevent label cutoff
-    plt.tight_layout()
-    
     plt.savefig('plots/requests_node_metrics.png')
     plt.close()
     
-    print("Plot saved successfully!")
 
 def process_events():
     # The basic Idea here is that the timestamp of the event in events.csv is when the event was finished processing.
@@ -240,7 +241,7 @@ def process_events():
 
     # Convert timestamps to datetime objects (format: 2025-01-29T13:43:37.792661715Z)
     events_df['timestamp'] = pd.to_datetime(events_df['timestamp'], format='%Y-%m-%dT%H:%M:%S.%fZ')
-    
+    requests_df['timestamp'] = pd.to_datetime(requests_df['timestamp'], format='%Y-%m-%dT%H:%M:%S.%fZ')
     # Merge requests and events data on event_id
     merged_df = pd.merge(
         requests_df,
@@ -250,6 +251,9 @@ def process_events():
         suffixes=('_request', '_completion')
     )
     
+    # Filter for only experiments with 1 trigger  TODO UNCOMMENT
+    #merged_df = merged_df[merged_df['triggers'] == 1]
+
     # Calculate processing time for each event
     merged_df['processing_time'] = (
         merged_df['timestamp_completion'] - merged_df['timestamp_request']
@@ -263,7 +267,7 @@ def process_events():
     
     # Calculate events processed per second
     for idx in summary_stats.index:
-        experiment_data = merged_df[merged_df['experiment_id'] == idx]
+        experiment_data = merged_df[merged_df['rps'] == idx]
         duration = (experiment_data['timestamp_completion'].max() - 
                    experiment_data['timestamp_request'].min()).total_seconds()
         events_per_second = len(experiment_data) / duration
@@ -274,13 +278,14 @@ def process_events():
     
     # Create visualization of processing times
     plt.figure(figsize=(10, 6))
-    sns.boxplot(data=merged_df, x='experiment_id', y='processing_time')
+    sns.boxplot(data=merged_df, x='rps', y='processing_time')
     plt.title('Event Processing Time Distribution by Experiment')
     plt.xlabel('Experiment ID')
     plt.ylabel('Processing Time (seconds)')
     plt.xticks(rotation=45)
     plt.tight_layout()
-    plt.savefig('plots/event_processing_times.png')
+    time_now = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    plt.savefig(f'plots/event_processing_times_{time_now}.png')
     plt.close()
 
     # Visualisation of knative's cpu and memory usage (per pod in knative-eventing namespace)
@@ -318,7 +323,8 @@ def process_events():
     ax2.tick_params(axis='y', labelcolor='red')
 
     plt.tight_layout()
-    plt.savefig('plots/eventing_node_metrics.png')
+    time_now = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    plt.savefig(f'plots/eventing_node_metrics_{time_now}.png')
     plt.close()
 
 def plot_cpu_usage(node_name, pod_filter_out = []):
@@ -344,10 +350,46 @@ def plot_cpu_usage(node_name, pod_filter_out = []):
     plt.savefig(f'plots/cpu_usage_{node_name}.png', bbox_inches='tight', dpi=300)
     plt.close()
 
+def scenario_1_analysis():
+    """
+    Scenario 1: 
+    RPS: 100, 200, 300, 400, 500, 600, 700, 800, 900
+    Preliminary runs indicate that until 300rps the events are processed pretty fast.
+    With 400rps we see a huge increase in latency, already 100s for some events.
+    """
+
+    # Calculate summary statistics for TTFB grouped by rps
+    summary_ttfb = requests_df.groupby(
+        ['experiment_id', 'rps', 'status']
+    )['ttfb'].describe().reset_index()
+    print("\nTTFB Summary Statistics by experiment configuration and status:")
+    print(summary_ttfb.to_string(index=False))
+
+    # Merge requests and events data on event_id
+    merged_df = pd.merge(
+        requests_df,
+        events_df,
+        left_on='event_id', 
+        right_on='event_id',
+        suffixes=('_request', '_completion')
+    )
+
+    # Calculate processing time for each event
+    merged_df['processing_time'] = (
+        merged_df['timestamp_completion'] - merged_df['timestamp_request']
+    ).dt.total_seconds()
+
+    # Calculate summary statistics for event processing time
+    summary_event_processing_time = merged_df.groupby(
+        ['experiment_id', 'rps', 'status']
+    )['processing_time'].describe().reset_index()
+    print("\nEvent Processing Time Summary Statistics by experiment configuration and status:")
+    print(summary_event_processing_time.to_string(index=False))
+
 #nodes_metrics_plot()
-#process_events()
-plot_cpu_usage('nodes-europe-west1-b-xw95', ['trigger', 'cilium', "csi", "coredns"])
-plot_cpu_usage('nodes-europe-west1-b-vmpb', ['trigger', 'cilium', "csi", "coredns"])
+scenario_1_analysis()
+#plot_cpu_usage('nodes-europe-west1-b-xw95', ['trigger', 'cilium', "csi", "coredns"])
+#plot_cpu_usage('nodes-europe-west1-b-vmpb', ['trigger', 'cilium', "csi", "coredns"])
 #requests_node_metrics_plot()
 #ttfb_rolling_mean_plot()
 # Close the database connection
