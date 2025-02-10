@@ -2,9 +2,9 @@
 export TF_VAR_project_id := "csb-benchmark"       # Your GCP project ID
 export CLUSTER_NAME := "csb.lucca.org"            # Your cluster name
 export TF_VAR_zone := "europe-west1-b"             # GCP zone for the cluster
-export NODE_COUNT := "6"              # 1 monitoring + 1 workload-gen + 2 knative-system + 2 for functions
-export CONTROL_PLANE_SIZE := "n2-standard-4"      # Machine type for control plane n2-standard-4n2-standard-4
-export NODE_SIZE := "n2-standard-4"               # Machine type for worker nodes
+export NODE_COUNT := "3"              # 1 monitoring + 1 workload-gen + 2 knative-system + 2 for functions
+export CONTROL_PLANE_SIZE := "e2-standard-4"      # Machine type for control plane n2-standard-4n2-standard-4
+export NODE_SIZE := "e2-standard-4"               # Machine type for worker nodes
 export TF_VAR_bucket_name := "csb-benchmark-state"      # Must be globally unique
 export TF_VAR_bucket_location := "EU"  # GCS bucket location
 
@@ -118,8 +118,8 @@ setup-cluster:
     kubectl taint node ${NODES[2]} dedicated=knative:NoSchedule
 
     # Fourth worker node for Knative system components (serving and eventing)
-    kubectl label node ${NODES[3]} dedicated=knative
-    kubectl taint node ${NODES[3]} dedicated=knative:NoSchedule
+    #kubectl label node ${NODES[3]} dedicated=knative
+    #kubectl taint node ${NODES[3]} dedicated=knative:NoSchedule
 
     # The remaining node (NODES[4]) is left untainted for function scaling
     echo "Remaining nodes available for function scaling"
@@ -319,8 +319,8 @@ serving-scenario-2:
 
     echo "Running cold start benchmark (40m)"
             
-    for i in {1..2}; do
-        kubectl exec -it $pod_name -n workload-generator -- ./workload-generator --config=serving-scenario-2-go.yaml --prefix=serving-scenario-2_all --cold-start=true
+    for i in {1..7}; do
+        kubectl exec -it $pod_name -n workload-generator -- ./workload-generator --config=serving-scenario-2-go-long.yaml --prefix=serving-scenario-2_all --cold-start=true
         sleep 10
     done
 
