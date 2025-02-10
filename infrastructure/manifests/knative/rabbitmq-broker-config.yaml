@@ -5,6 +5,5 @@ metadata:
   namespace: knative-eventing
 spec:
   rabbitmqClusterReference:
-    # Configure name if a RabbitMQ Cluster Operator is being used.
     name: rabbitmq-cluster
   queueType: quorum

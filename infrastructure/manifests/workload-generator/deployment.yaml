@@ -26,6 +26,13 @@ spec:
         volumeMounts:
         - name: workload-generator-logs
           mountPath: /logs
+        resources:
+          requests:
+            memory: "7Gi"
+            cpu: "3"
+          limits:
+            memory: "14Gi"
+            cpu: "8"
       volumes:
       - name: workload-generator-logs
         hostPath:

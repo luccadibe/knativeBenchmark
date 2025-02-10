@@ -19,6 +19,7 @@ func main() {
 	pingEndpoints := flag.Bool("ping", false, "ping endpoints")
 	devMode := flag.Bool("dev", false, "development mode - use localhost:8080")
 	cloudEventMode := flag.Bool("event", false, "cloud event mode - generate cloud events")
+	coldStartMode := flag.Bool("cold-start", false, "cold start mode - send requests to trigger cold start")
 	prefix := flag.String("prefix", "workload-generator", "prefix for log file")
 	flag.Parse()
 	logFile := store.GetLogFileWriter(*prefix, "/logs")
@@ -67,6 +68,14 @@ func main() {
 		err = gen.Start()
 		if err != nil {
 			logger.Error("Generator failed", "error", err)
+		}
+		gen.Stop()
+	} else if *coldStartMode {
+		gen := generator.New(cfg, logger, pool)
+		logger.Info("Generator initialized")
+		err = gen.StartColdStart()
+		if err != nil {
+			logger.Error("Cold start failed", "error", err)
 		}
 		gen.Stop()
 	} else {

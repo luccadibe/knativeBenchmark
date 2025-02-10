@@ -35,14 +35,16 @@ type NodeMetrics struct {
 }
 
 type PodMetrics struct {
-	PodName          string
-	NodeName         string
-	ContainerName    string
-	CPUUsage         string
-	MemoryUsage      string
-	CPUPercentage    float64
-	MemoryPercentage float64
-	Timestamp        string
+	PodName            string
+	NodeName           string
+	ContainerName      string
+	CPUUsage           string
+	MemoryUsage        string
+	CPUPercentage      float64
+	MemoryPercentage   float64
+	Timestamp          string
+	ContainerTimestamp string
+	ContainerWindow    string
 }
 
 var (
@@ -232,6 +234,9 @@ func collectPodMetrics(clientset *kubernetes.Clientset, metricsClient *metricscl
 			cpuAllocatable := allocatable[corev1.ResourceCPU]
 			memoryAllocatable := allocatable[corev1.ResourceMemory]
 
+			containerTimestamp := podMetrics.Timestamp
+			containerWindow := podMetrics.Window
+
 			for _, container := range podMetrics.Containers {
 				cpuUsage := container.Usage[corev1.ResourceCPU]
 				memoryUsage := container.Usage[corev1.ResourceMemory]
@@ -240,14 +245,16 @@ func collectPodMetrics(clientset *kubernetes.Clientset, metricsClient *metricscl
 				memoryPercentage := float64(memoryUsage.Value()) / float64(memoryAllocatable.Value())
 
 				metrics := PodMetrics{
-					PodName:          podMetrics.Name,
-					NodeName:         nodeName,
-					ContainerName:    container.Name,
-					CPUUsage:         cpuUsage.String(),
-					MemoryUsage:      memoryUsage.String(),
-					CPUPercentage:    cpuPercentage,
-					MemoryPercentage: memoryPercentage,
-					Timestamp:        time.Now().Format(time.RFC3339),
+					PodName:            podMetrics.Name,
+					NodeName:           nodeName,
+					ContainerName:      container.Name,
+					CPUUsage:           cpuUsage.String(),
+					MemoryUsage:        memoryUsage.String(),
+					CPUPercentage:      cpuPercentage,
+					MemoryPercentage:   memoryPercentage,
+					Timestamp:          time.Now().Format(time.RFC3339),
+					ContainerTimestamp: containerTimestamp.Format(time.RFC3339),
+					ContainerWindow:    containerWindow.String(),
 				}
 
 				if err := storage.StorePodMetrics(metrics); err != nil {

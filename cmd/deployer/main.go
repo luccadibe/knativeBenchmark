@@ -360,19 +360,4 @@ func handleServiceAction(ctx context.Context, c client.Client, action, name, ima
 			}
 		}
 	}
-
-	// For sequence and broker scenarios, also deploy the receiver service if it doesn't exist
-	if action == "deploy" {
-		receiverSvc := &servingv1.Service{}
-		err := c.Get(ctx, client.ObjectKey{Name: "receiver", Namespace: "functions"}, receiverSvc)
-		if err != nil {
-			// Receiver doesn't exist, create it
-			receiverSvc = createKnativeService("receiver", "cloudevent-receiver")
-			if err := c.Create(ctx, receiverSvc); err != nil {
-				fmt.Printf("Failed to create receiver service: %v\n", err)
-			} else {
-				fmt.Printf("Created receiver service\n")
-			}
-		}
-	}
 }

@@ -1,0 +1,37 @@
+targets:
+  - url: "http://empty-go-http-0.functions.svc.cluster.local"
+    weight: 1
+    headers:
+      Content-Type: "application/json"
+  - url: "http://empty-python-http-0.functions.svc.cluster.local"
+    weight: 1
+    headers:
+      Content-Type: "application/json"
+  - url: "http://empty-quarkus-http-0.functions.svc.cluster.local"
+    weight: 1
+    headers:
+      Content-Type: "application/json"
+  - url: "http://empty-rust-http-0.functions.svc.cluster.local"
+    weight: 1
+    headers:
+      Content-Type: "application/json"
+  - url: "http://empty-springboot-http-0.functions.svc.cluster.local"
+    weight: 1
+    headers:
+      Content-Type: "application/json"
+  - url: "http://empty-ts-http-0.functions.svc.cluster.local"
+    weight: 1
+    headers:
+      Content-Type: "application/json"
+rate:
+  requestsPerSecond: 0.016  # One request every 60 seconds
+  duration: 60m
+
+  # HTTP client settings
+  maxIdleConns: 100
+  maxIdleConnsPerHost: 100
+  idleConnTimeout: 90s
+  timeout: 30s
+
+store:
+  logDirPath: "/logs"

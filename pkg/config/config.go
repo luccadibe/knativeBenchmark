@@ -1,7 +1,6 @@
 package config
 
 import (
-	"fmt"
 	"os"
 	"time"
 
@@ -73,6 +72,5 @@ func Load(path string, devMode bool) (*Config, error) {
 			cfg.Targets[i].URL = cfg.BaseURL
 		}
 	}
-	fmt.Println("cfg", cfg)
 	return &cfg, nil
 }

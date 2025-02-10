@@ -19,6 +19,13 @@ spec:
         securityContext:
           allowPrivilegeEscalation: true
           privileged: true
+        resources:
+          requests:
+            memory: "7Gi"
+            cpu: "3"
+          limits:
+            memory: "14Gi"
+            cpu: "8"
         volumeMounts:
         - name: workload-generator-logs
           mountPath: /logs

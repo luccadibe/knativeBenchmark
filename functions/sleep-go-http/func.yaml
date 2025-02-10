@@ -1,0 +1,11 @@
+specVersion: 0.36.0
+name: sleep-go-http
+runtime: go
+image: docker.io/luccadibenedetto/sleep-go-http:latest
+namespace: functions
+created: 2025-02-08T13:09:29.04611119+01:00
+build:
+  builder: pack
+deploy:
+  namespace: functions
+  image: docker.io/luccadibenedetto/sleep-go-http@sha256:d4f41509029a8ebc52055fbc16130c36c7483e33241ea601e6ab070ae7b41688

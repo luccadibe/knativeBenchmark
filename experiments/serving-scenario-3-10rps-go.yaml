@@ -1,11 +1,11 @@
 targets:
-  - url: "http://empty-go-http-0.functions.svc.cluster.local"
+  - url: "http://sleep-go-http-0.functions.svc.cluster.local"
     weight: 1
     headers:
       Content-Type: "application/json"
 rate:
   requestsPerSecond: 10
-  duration: 2m
+  duration: 3m
 
   # HTTP client settings
   maxIdleConns: 100

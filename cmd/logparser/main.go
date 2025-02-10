@@ -2,6 +2,7 @@
 package main
 
 import (
+	"bufio"
 	"database/sql"
 	"flag"
 	"fmt"
@@ -167,6 +168,7 @@ func processLogs(db *sql.DB, cfg config) (*processingStats, error) {
 
 		filePath := filepath.Join(cfg.logDir, entry.Name())
 		config, requests, err := processFile(filePath)
+		log.Printf("File processed: %s", filePath)
 		if err != nil {
 			log.Printf("Error processing %q: %v", entry.Name(), err)
 			continue
@@ -280,26 +282,41 @@ func parseFilename(filename string) (*experimentInfo, error) {
 }
 
 func processFile(path string) (map[string]interface{}, []request, error) {
-	content, err := os.ReadFile(path)
+	log.Printf("Reading file: %s", path)
+
+	file, err := os.Open(path)
 	if err != nil {
 		return nil, nil, err
 	}
+	defer file.Close()
 
-	lines := strings.Split(string(content), "\n")
-	if len(lines) < 2 {
-		return nil, nil, fmt.Errorf("invalid log file format")
+	scanner := bufio.NewScanner(file)
+
+	// Read first line and discard (usually empty or header)
+	if !scanner.Scan() {
+		return nil, nil, fmt.Errorf("empty file")
 	}
 
-	config := parseConfig(lines[1])
-	var requests []request
+	// Read config from second line
+	if !scanner.Scan() {
+		return nil, nil, fmt.Errorf("missing config line")
+	}
+	config := parseConfig(scanner.Text())
 
-	for _, line := range lines[2:] {
+	var requests []request
+	// Process remaining lines
+	for scanner.Scan() {
+		line := scanner.Text()
 		if strings.Contains(line, `msg=Success`) || strings.Contains(line, `msg=Failed`) {
 			req, err := parseRequest(line)
 			if err == nil {
 				requests = append(requests, req)
 			}
 		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, nil, fmt.Errorf("error reading file: %w", err)
 	}
 
 	return config, requests, nil
@@ -396,13 +413,13 @@ func parseKeyValuePairs(line string) map[string]string {
 }
 
 // parseDuration converts a duration string to milliseconds by parsing it into a time.Duration
-// and converting nanoseconds to milliseconds (dividing by 1e6)
+// and converting to milliseconds
 func parseDuration(s string) float64 {
 	d, err := time.ParseDuration(s)
 	if err != nil {
 		return 0
 	}
-	return float64(d.Nanoseconds()) / 1e6
+	return float64(d.Milliseconds())
 }
 
 func insertExperiment(db *sql.DB, exp *experimentInfo, config map[string]interface{}) (int64, error) {
@@ -457,6 +474,13 @@ func insertRequests(db *sql.DB, expID int64, requests []request) error {
 	defer stmt.Close()
 
 	for _, req := range requests {
+		var eventID interface{}
+		if req.eventid == "" {
+			eventID = nil
+		} else {
+			eventID = req.eventid
+		}
+
 		_, err := stmt.Exec(
 			expID,
 			req.timestamp.Format(time.RFC3339Nano),
@@ -468,7 +492,7 @@ func insertRequests(db *sql.DB, expID int64, requests []request) error {
 			req.connect,
 			req.tls,
 			req.errorMessage,
-			req.eventid,
+			eventID,
 			req.target,
 		)
 		if err != nil {

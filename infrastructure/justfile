@@ -2,7 +2,7 @@
 export TF_VAR_project_id := "csb-benchmark"       # Your GCP project ID
 export CLUSTER_NAME := "csb.lucca.org"            # Your cluster name
 export TF_VAR_zone := "europe-west1-b"             # GCP zone for the cluster
-export NODE_COUNT := "5"              # 1 monitoring + 1 workload-gen + 2 knative-system + 1 for functions
+export NODE_COUNT := "6"              # 1 monitoring + 1 workload-gen + 2 knative-system + 2 for functions
 export CONTROL_PLANE_SIZE := "n2-standard-4"      # Machine type for control plane n2-standard-4n2-standard-4
 export NODE_SIZE := "n2-standard-4"               # Machine type for worker nodes
 export TF_VAR_bucket_name := "csb-benchmark-state"      # Must be globally unique
@@ -76,15 +76,11 @@ up spot="": _check-env
         --set="spec.metricsServer.insecure=true" \
         --yes
 
-    if [ ${spot} = "true" ]; then
-        # Configure spot instances
-        echo "Modifying instance groups to use spot instances..."
-        kops get ig --name "${CLUSTER_NAME}" -o yaml > ig_specs.yaml
-        sed -i '/spec:/a\  gcpProvisioningModel: SPOT' ig_specs.yaml
-        kops replace -f ig_specs.yaml
-    fi
-
+setup-cluster:
+    #!/bin/bash
+    set -e
     # Create and validate cluster
+    export KOPS_STATE_STORE="gs://$(terraform output -raw kops_state_store_bucket_name)"
     echo "Creating the cluster..."
     kops update cluster --name="${CLUSTER_NAME}" --yes
     kops export kubeconfig --admin
@@ -95,11 +91,6 @@ up spot="": _check-env
     kubectl create namespace functions
     kubectl create namespace metrics
     kubectl create namespace workload-generator
-    # Setup node labels - get second node (first is control plane)
-    #NODE_NAME=$(kubectl get nodes --no-headers -o custom-columns=":metadata.name" | tail -1)
-    #kubectl label node ${NODE_NAME} workload-generator=true
-    # Taint the node so only workload generator pods can run there
-    #kubectl taint node ${NODE_NAME} dedicated=workload-generator:NoSchedule
 
     # Create the persistent volume
     kubectl apply -f manifests/pv.yaml
@@ -116,7 +107,7 @@ up spot="": _check-env
     
     # First worker node for metrics
     kubectl label node ${NODES[0]} dedicated=metrics
-    kubectl taint node ${NODES[0]} dedicated=metrics:NoSchedule
+    #kubectl taint node ${NODES[0]} dedicated=metrics:NoSchedule
     
     # Second worker node for workload generator
     kubectl label node ${NODES[1]} dedicated=workload-generator
@@ -158,7 +149,10 @@ install-serving: _check-env
         --type merge \
         --patch '{"data":{"min-scale-down-utilization-percentage":"100"}}'
 
-
+    kubectl patch configmap/config-autoscaler \
+        --namespace knative-serving \
+        --type merge \
+        --patch '{"data":{"max-scale":"100"}}'
     
 
     # SCRAPE INTERVALS OF KNATIVE COMPONENTS
@@ -250,27 +244,6 @@ get-kubeconfig: _check-env
     export KOPS_STATE_STORE="gs://$(terraform output -raw kops_state_store_bucket_name)" && \
     kops export kubeconfig --admin
 
-debug-cluster: _check-env
-    #!/bin/bash
-    terraform apply -auto-approve
-    export KOPS_STATE_STORE="gs://$(terraform output -raw kops_state_store_bucket_name)"
-    kops create cluster \
-        --name="${CLUSTER_NAME}" \
-        --state="${KOPS_STATE_STORE}" \
-        --zones="${TF_VAR_zone}" \
-        --control-plane-zones="${TF_VAR_zone}" \
-        --node-count="${NODE_COUNT}" \
-        --control-plane-size="${CONTROL_PLANE_SIZE}" \
-        --node-size="${NODE_SIZE}" \
-        --control-plane-count=1 \
-        --networking=cilium \
-        --cloud=gce \
-        --project="${TF_VAR_project_id}" \
-        --set="spec.kubeAPIServer.enableAdmissionPlugins=PodNodeSelector" \
-        --set="spec.kubeAPIServer.enableAdmissionPlugins=PodTolerationRestriction" \
-        --dry-run \
-        --output=yaml
-
 build:
     docker build -t luccadibenedetto/workload-generator:latest --push -f ../Dockerfile.wg ../ 
     docker build -t luccadibenedetto/cloudevent-reciever:latest --push -f ../Dockerfile.reciever ../
@@ -284,30 +257,28 @@ eventing:
 
     kubectl apply -f manifests/fluent-bit/statefulset.yaml
 
-destroy-eventing:
-    go run ../cmd/deployer/main.go --action=destroy --image=go-handler-event --name=event-handler --amount=10
-    kubectl delete -f manifests/workload-generator/container-source-1.yaml
-    kubectl delete -f manifests/rabbitmq/rabbitmq-cluster.yaml
-    kubectl delete -f manifests/knative/rabbitmq-broker-config.yaml
-    kubectl delete -f manifests/knative/rabbitmq-broker.yaml
-    kubectl delete -f manifests/reciever/deployment.yaml
-
+deploy-ksvc:
+    go run ../cmd/deployer/main.go --action=deploy --image=empty-go-http --name=empty-go-http --amount=1
+    go run ../cmd/deployer/main.go --action=deploy --image=empty-python-http --name=empty-python-http --amount=1
+    go run ../cmd/deployer/main.go --action=deploy --image=empty-quarkus-http --name=empty-quarkus-http --amount=1
+    go run ../cmd/deployer/main.go --action=deploy --image=empty-springboot-http --name=empty-springboot-http --amount=1
+    go run ../cmd/deployer/main.go --action=deploy --image=empty-rust-http --name=empty-rust-http --amount=1
+    go run ../cmd/deployer/main.go --action=deploy --image=empty-ts-http --name=empty-ts-http --amount=1
+    sleep 120
 # Warm latency benchmark. Per language. RPS 1500 , 1700 , 2000, 2500
 serving-scenario-1:
     #!/bin/bash
     kubectl delete -f manifests/workload-generator/container-source-1.yaml
     kubectl apply -f manifests/workload-generator/deployment.yaml
-    RPS_VALUES=(5000 , 6000 , 7000 , 8000 , 9000 , 10000)
+    #"springboot:empty-springboot-http"
+    #"python:empty-python-http"
+    #"quarkus:empty-quarkus-http"
+    RPS_VALUES=(16000)
     LANGUAGES=(
         "go:empty-go-http"
-        "python:empty-python-http"
-        "quarkus:empty-quarkus-http"
-        "springboot:empty-springboot-http"
         "rust:empty-rust-http"
         "ts:empty-ts-http"
     )
-    SCENARIO="serving-scenario-1"
-    NAMESPACE="workload-generator"
 
     # Main execution
     for rps in "${RPS_VALUES[@]}"; do
@@ -315,33 +286,21 @@ serving-scenario-1:
             IFS=':' read -r lang image <<< "$lang_pair"
             
             echo "Running benchmark for $lang at $rps RPS"
-            
-            # Deploy the service
-            go run ../cmd/deployer/main.go --action=deploy --image="$image" --name="$image" --amount=1
-            sleep 10
 
             # Run workload generator
-            kubectl exec -it $(kubectl get pods -o jsonpath="{.items[0].metadata.name}" -n $NAMESPACE) -n $NAMESPACE -- \
+            kubectl exec -it $(kubectl get pods -o jsonpath="{.items[0].metadata.name}" -n workload-generator) -n workload-generator -- \
                 ./workload-generator \
-                --config="$SCENARIO-$lang.yaml" \
+                --config="serving-scenario-1-$lang.yaml" \
                 --rps=${rps} \
-                --prefix="$SCENARIO_${rps}rps_${lang}"
-
-            # Cleanup
-            go run ../cmd/deployer/main.go --action=delete --image="$image" --name="$image" --amount=1
-            sleep 20
+                --prefix="serving-scenario-1_${rps}rps_${lang}"
+            echo "Waiting for 180 seconds"
+            sleep 180 
         done
     done
 
 #Coldstart benchmark
 serving-scenario-2:
     #!/bin/bash
-    go run ../cmd/deployer/main.go --action=deploy --image=empty-go-http --name=empty-go-http --amount=1
-    go run ../cmd/deployer/main.go --action=deploy --image=empty-python-http --name=empty-python-http --amount=1
-    go run ../cmd/deployer/main.go --action=deploy --image=empty-quarkus-http --name=empty-quarkus-http --amount=1
-    go run ../cmd/deployer/main.go --action=deploy --image=empty-springboot-http --name=empty-springboot-http --amount=1
-    go run ../cmd/deployer/main.go --action=deploy --image=empty-rust-http --name=empty-rust-http --amount=1
-    go run ../cmd/deployer/main.go --action=deploy --image=empty-ts-http --name=empty-ts-http --amount=1
     kubectl delete -f manifests/workload-generator/container-source-1.yaml
     kubectl apply -f manifests/workload-generator/deployment.yaml
     sleep 10
@@ -357,20 +316,13 @@ serving-scenario-2:
     pod_name=$(kubectl get pods -o jsonpath="{.items[0].metadata.name}" -n workload-generator)
 
     sleep 10
+
+    echo "Running cold start benchmark (40m)"
             
-    kubectl exec -it $pod_name -n workload-generator -- ./workload-generator --config=serving-scenario-2-go.yaml --prefix=serving-scenario-2_all
-
-    sleep 10
-
-    kubectl exec -it $pod_name -n workload-generator -- ./workload-generator --config=serving-scenario-2-go.yaml --prefix=serving-scenario-2_all
-
-    sleep 10
-
-    kubectl exec -it $pod_name -n workload-generator -- ./workload-generator --config=serving-scenario-2-go.yaml --prefix=serving-scenario-2_all
-
-    sleep 10
-
-    kubectl exec -it $pod_name -n workload-generator -- ./workload-generator --config=serving-scenario-2-go.yaml --prefix=serving-scenario-2_all
+    for i in {1..2}; do
+        kubectl exec -it $pod_name -n workload-generator -- ./workload-generator --config=serving-scenario-2-go.yaml --prefix=serving-scenario-2_all --cold-start=true
+        sleep 10
+    done
 
     # Back to the original scale-to-zero-grace-period               
     kubectl patch configmap/config-autoscaler \
@@ -382,67 +334,69 @@ serving-scenario-2:
         --type merge \
         --patch '{"data":{"stable-window":"60s"}}'
 
-    go run ../cmd/deployer/main.go --action=delete --image=empty-go-http --name=empty-go-http --amount=1
-    go run ../cmd/deployer/main.go --action=delete --image=empty-python-http --name=empty-python-http --amount=1
-    go run ../cmd/deployer/main.go --action=delete --image=empty-quarkus-http --name=empty-quarkus-http --amount=1
-    go run ../cmd/deployer/main.go --action=delete --image=empty-springboot-http --name=empty-springboot-http --amount=1
-    go run ../cmd/deployer/main.go --action=delete --image=empty-rust-http --name=empty-rust-http --amount=1
-    go run ../cmd/deployer/main.go --action=delete --image=empty-ts-http --name=empty-ts-http --amount=1
+    sleep 120
 
 # Container concurrency set to 1
 serving-scenario-3:
-    kubectl patch configmap/config-defaults \
+    #!/bin/bash
+
+    go run ../cmd/deployer/main.go --action=deploy --image=sleep-go-http --name=sleep-go-http --amount=1
+
+    kubectl patch configmap/config-autoscaler \
         --namespace knative-serving \
         --type merge \
-        --patch '{"data":{"container-concurrency":"1"}}'
-    go run ../cmd/deployer/main.go --action=delete --image=empty-go-http --name=empty-go-http --amount=1
-    go run ../cmd/deployer/main.go --action=deploy --image=empty-go-http --name=empty-go-http --amount=1
-
-    kubectl apply -f manifests/workload-generator/deployment.yaml
-    sleep 10
-    kubectl exec -it $(kubectl get pods -o jsonpath="{.items[0].metadata.name}" -n workload-generator) -n workload-generator -- ./workload-generator --config=serving-scenario-3-500rps-go.yaml --rps=500 --prefix=serving-scenario-3_500rps_go
+        --patch '{"data":{"max-scale":"400"}}'
+    
+    # Patch the container concurrency to 1
+    kubectl patch ksvc sleep-go-http-0 --namespace functions --type merge --patch '{"spec":{"template":{"spec":{"containerConcurrency":1}}}}'
 
     sleep 60
+    kubectl apply -f manifests/workload-generator/deployment.yaml
+    rps=(300 400)
+    for rps in "${rps[@]}"; do
+        kubectl exec -it $(kubectl get pods -o jsonpath="{.items[0].metadata.name}" -n workload-generator) -n workload-generator -- ./workload-generator --config=serving-scenario-3-100rps-go.yaml --rps=${rps} --prefix=serving-scenario-3_${rps}rps_go
+        echo "Waiting for 120 seconds"
+        sleep 120
+    done
 
-    kubectl exec -it $(kubectl get pods -o jsonpath="{.items[0].metadata.name}" -n workload-generator) -n workload-generator -- ./workload-generator --config=serving-scenario-3-100rps-go.yaml --rps=1000 --prefix=serving-scenario-3_1000rps_go
-
-    kubectl patch configmap/config-defaults \
-        --namespace knative-serving \
-        --type merge \
-        --patch '{"data":{"container-concurrency":"0"}}'
-# Extracts the log files from the workload generator pod
-logfiles mode="serving":
+    # Patch it back to 0
+    kubectl patch ksvc empty-go-http-0 --namespace functions --type merge --patch '{"spec":{"template":{"spec":{"containerConcurrency":0}}}}'
+    sleep 120
+   
+process-logs:
     #!/bin/bash
-    #All the log files are in the /logs directory
-    # First zip the logs inside the pod
+    go run ../cmd/logparser/main.go --logs ../data/
+    mv benchmark.db ../data/benchmark.db
+
+    mv metrics.db ../data/metrics.db
+
+    # Combine metrics db
+    #sqlite3 ../data/benchmark.db "ATTACH DATABASE 'metrics.db' AS metrics;"
+    #sqlite3 ../data/benchmark.db "CREATE TABLE node_metrics as select * from metrics.node_metrics;"
+    #sqlite3 ../data/benchmark.db "CREATE TABLE pod_metrics as select * from metrics.pod_metrics;"
+    #sqlite3 ../data/benchmark.db "DETACH DATABASE metrics;"
+
+    echo "Processing logs done. The results are in ../data/benchmark.db and ../data/metrics.db"
+
+extract-serving-logs:
+    #!/bin/bash
+    kubectl exec -it $(kubectl get pods -o jsonpath="{.items[0].metadata.name}" -n workload-generator) -n workload-generator -- tar -czf logs.tar.gz /logs
+    kubectl cp workload-generator/$(kubectl get pods -o jsonpath="{.items[0].metadata.name}" -n workload-generator):/app/logs.tar.gz ../data/logs.tar.gz
+    tar -xzf ../data/logs.tar.gz -C ../data/
+    mv ../data/logs/* ../data/
+    rm ../data/logs.tar.gz
+
+extract-logs-remove:
+    #!/bin/bash
+    # Extracts the logs from the workload generator pod
     kubectl exec -it $(kubectl get pods -o jsonpath="{.items[0].metadata.name}" -n workload-generator) -n workload-generator -- tar -czf logs.tar.gz /logs
     # Then copy the logs to the analysis directory
     kubectl cp workload-generator/$(kubectl get pods -o jsonpath="{.items[0].metadata.name}" -n workload-generator):/app/logs.tar.gz ../analysis/logs/logs.tar.gz
-    # Then unzip the logs
-    tar -xzf ../analysis/logs/logs.tar.gz
-
-    mv logs/* ../analysis/data/
-    # Then delete the zip file
-    rm ../analysis/logs/logs.tar.gz
-
-    go run ../cmd/logparser/main.go --logs ../analysis/data/
-
-    # move db to analysis/data
+    # rename and move the logs to the analysis directory
     timestamp=$(date +%s)
-    mv benchmark.db ../analysis/data/benchmark-${timestamp}.db
-    
-    # combine metrics db
-    #sqlite3 ../analysis/data/benchmark-${timestamp}.db "ATTACH DATABASE '../cmd/top/metrics.db' AS metrics;"
-    #sqlite3 ../analysis/data/benchmark-${timestamp}.db "CREATE TABLE node_metrics as select * from metrics.node_metrics;"
-    #sqlite3 ../analysis/data/benchmark-${timestamp}.db "CREATE TABLE pod_metrics as select * from metrics.pod_metrics;"
-    #sqlite3 ../analysis/data/benchmark-${timestamp}.db "DETACH DATABASE metrics;"
-
-    if [ {{mode}} == "eventing" ]; then
-    event_logger_pod=$(kubectl get pods -l app=event-logger -o jsonpath="{.items[0].metadata.name}" -n functions)
-    # Get event logger logs
-    kubectl exec -n functions $event_logger_pod -- /bin/bash -c "cat /data/events.csv" > ../analysis/data/events-${timestamp}.csv
-    uv run ../analysis/load-csv.py --db ../analysis/data/benchmark-${timestamp}.db --csv ../analysis/data/events-${timestamp}.csv
-    fi
+    mv ../analysis/logs/logs.tar.gz ../analysis/logs/logs-${timestamp}.tar.gz
+    # remove the logs from the pod
+    kubectl exec -it $(kubectl get pods -o jsonpath="{.items[0].metadata.name}" -n workload-generator) -n workload-generator -- sh -c "rm /logs/*.log"
 
 # Extracts the csv logs from the event logger pod
 extract-eventing-logs:
@@ -450,11 +404,14 @@ extract-eventing-logs:
     # Get event logger pod name (match label name event-logger)
     event_logger_pod=$(kubectl get pods -l app=event-logger -o jsonpath="{.items[0].metadata.name}" -n functions)
     # Get event logger logs
-    timestamp=$(date +%s)
-    kubectl exec -n functions $event_logger_pod -- /bin/bash -c "cat /data/events.csv" > ../analysis/data/events-${timestamp}.csv
+    if [ ! -f ../data/events.csv ]; then
+        kubectl exec -n functions $event_logger_pod -- /bin/bash -c "cat /data/events.csv" > ../data/events.csv
+    else
+        echo "Events file already exists. please rename it. You don't want to lose the old one"
+    fi
+
 
 # Runs the eventing scenario with 1 trigger.
-# RPS: 100 , 200 , 300 , 400 , 450 , 500 , 600 , 700 , 800 , 900 , 1000
 eventing-scenario-1:
     #!/bin/bash
     go run ../cmd/deployer/main.go --action=deploy --image=cloudevent-reciever --name=reciever --amount=1
@@ -467,24 +424,20 @@ eventing-scenario-1:
     kubectl delete -f manifests/workload-generator/deployment.yaml
     kubectl wait --for=condition=ready pod --all -n knative-eventing
     kubectl wait --for=condition=ready pod --all -n knative-serving
-    sleep 60
-
+    echo "Waiting for 120 seconds"
+    sleep 120
     
-    
-    rps=(1000 1500 2000 2500 3000)
+    rps=(10000 15000)
     for rps in "${rps[@]}"; do
-        kubectl exec -it $(kubectl get pods -o jsonpath="{.items[0].metadata.name}" -n workload-generator) -n workload-generator -- ./workload-generator --config=eventing-scenario-1-${rps}rps.yaml --prefix=eventing-scenario-1_${rps}rps  --event=true
-        sleep 80
+        kubectl exec -it $(kubectl get pods -o jsonpath="{.items[0].metadata.name}" -n workload-generator) -n workload-generator -- ./workload-generator --config=eventing-scenario-1-100rps.yaml --prefix=eventing-scenario-1_${rps}rps  --event=true --rps=${rps}
+        echo "Waiting for 60 seconds"
+        sleep 60
     done
-
-    go run ../cmd/deployer/main.go --action=delete --image=cloudevent-reciever --name=reciever --amount=1
     go run ../cmd/deployer/main.go --action=delete-trigger --name=trigger --broker=rabbitmq-broker --amount=1
 
-# Runs with multiple triggers ( 4 , 6 , 8 , 10) RPS: 1000, 1200, 1400, 1600, 1800, 2000 and 10 workers
+# Runs with multiple triggers
 eventing-scenario-2:
     #!/bin/bash
-    go run ../cmd/deployer/main.go --action=deploy --image=cloudevent-reciever --name=reciever --amount=1
-    go run ../cmd/deployer/main.go --action=trigger --name=trigger --broker=rabbitmq-broker --amount=1
     kubectl apply -f manifests/rabbitmq/rabbitmq-cluster.yaml
     kubectl apply -f manifests/knative/rabbitmq-broker-config.yaml
     kubectl apply -f manifests/knative/rabbitmq-broker.yaml
@@ -493,20 +446,24 @@ eventing-scenario-2:
     kubectl delete -f manifests/workload-generator/deployment.yaml
 
     trigger_amounts=(4 6 8 10)
-    rps=(2000 2500 3000 3500 4000 4500)
+    rps=(3000 4000)
     for amount in "${trigger_amounts[@]}"; do
+        echo "Running eventing scenario 2 with ${amount} triggers"
+        go run ../cmd/deployer/main.go --action=trigger --name=trigger --broker=rabbitmq-broker --amount=${amount}
+        sleep 25
         for rps in "${rps[@]}"; do
         kubectl exec -it $(kubectl get pods -o jsonpath="{.items[0].metadata.name}" -n workload-generator) -n workload-generator -- ./workload-generator --config=eventing-scenario-1-100rps.yaml --prefix=eventing-scenario-2_${amount}triggers_${rps}rps --event=true --rps=${rps}
-        sleep 100
+        echo "Waiting for 60 seconds"
+        sleep 60
         done
+        go run ../cmd/deployer/main.go --action=delete-trigger --name=trigger --broker=rabbitmq-broker --amount=${amount}
     done
 
-    go run ../cmd/deployer/main.go --action=delete-trigger --name=trigger --broker=rabbitmq-broker --amount=1
+    
 
 # Runs with 1 trigger, variable workers in the trigger
 eventing-scenario-3:
     #!/bin/bash
-    go run ../cmd/deployer/main.go --action=deploy --image=cloudevent-reciever --name=reciever --amount=1
     kubectl apply -f manifests/rabbitmq/rabbitmq-cluster.yaml
     kubectl apply -f manifests/knative/rabbitmq-broker-config.yaml
     kubectl apply -f manifests/knative/rabbitmq-broker.yaml
@@ -514,18 +471,24 @@ eventing-scenario-3:
     kubectl apply -f manifests/workload-generator/container-source-1.yaml
     kubectl delete -f manifests/workload-generator/deployment.yaml
     go run ../cmd/deployer/main.go --action=trigger --name=trigger --broker=rabbitmq-broker --amount=1
-    workers=(5 10 15 20)
-    rps=(2000 2500 3000 3500 4000 4500)
+    workers=(5 15 20)
+    rps=(10000 15000)
     for workers in "${workers[@]}"; do
         for rps in "${rps[@]}"; do
             #  annotation "rabbitmq.eventing.knative.dev/parallelism": workers,
             go run ../cmd/deployer/main.go --action=patch-trigger --name=trigger-trigger-0 --broker=rabbitmq-broker --parallelism=$workers
             kubectl exec -it $(kubectl get pods -o jsonpath="{.items[0].metadata.name}" -n workload-generator) -n workload-generator -- ./workload-generator --config=eventing-scenario-1-100rps.yaml --prefix=eventing-scenario-3_${rps}rps_${workers}workers --event=true --rps=${rps}
+            echo "Waiting for 80 seconds"
             sleep 80
         done
     done
 
     go run ../cmd/deployer/main.go --action=delete-trigger --name=trigger --broker=rabbitmq-broker --amount=1
 
-run: logfiles extract-eventing-logs
 install: install-serving install-kourier install-eventing install-knative-metrics
+
+top:
+    go run ../cmd/top/main.go --frequency=1 --storage=sqlite
+
+
+runserving: deploy-ksvc serving-scenario-1 serving-scenario-2 serving-scenario-3 extract-serving-logs process-logs

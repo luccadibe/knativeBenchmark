@@ -5,7 +5,7 @@ targets:
       Content-Type: "application/json"
 rate:
   requestsPerSecond: 40
-  duration: 2m
+  duration: 3m
 
   # HTTP client settings
   maxIdleConns: 100

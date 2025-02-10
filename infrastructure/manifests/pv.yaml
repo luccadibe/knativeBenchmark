@@ -4,7 +4,7 @@ metadata:
   name: workload-generator-logs
 spec:
   capacity:
-    storage: 10Gi
+    storage: 40Gi
   accessModes:
     - ReadWriteOnce
   persistentVolumeReclaimPolicy: Retain
@@ -21,7 +21,7 @@ metadata:
     app: prometheus
 spec:
   capacity:
-    storage: 10Gi
+    storage: 40Gi
   accessModes:
     - ReadWriteOnce
   persistentVolumeReclaimPolicy: Retain
